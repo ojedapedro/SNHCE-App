@@ -1,0 +1,38 @@
+{
+  "app": {
+    "name": "SNHCE",
+    "fullName": "Sistema Nacional Interoperable de Historia Clínica Electrónica"
+  },
+  "nav": {
+    "inicio": "Inicio",
+    "citas": "Mis Citas",
+    "historia": "Mi Historia",
+    "perfil": "Perfil y Seguridad",
+    "ayuda": "Ayuda",
+    "cerrarSesion": "Cerrar Sesión"
+  },
+  "acciones": {
+    "guardar": "Guardar",
+    "cancelar": "Cancelar",
+    "confirmar": "Confirmar",
+    "buscar": "Buscar",
+    "volver": "Volver",
+    "ver": "Ver detalle",
+    "editar": "Editar",
+    "continuar": "Continuar"
+  },
+  "estados": {
+    "cargando": "Cargando...",
+    "sinConexion": "Sin conexión",
+    "sincronizando": "Sincronizando...",
+    "conectado": "Conectado",
+    "guardandoBorrador": "Guardando borrador..."
+  },
+  "errores": {
+    "generico": "Ocurrió un error. Por favor intente de nuevo.",
+    "noAutorizado": "No tiene permisos para realizar esta acción.",
+    "sesionExpirada": "Su sesión ha expirado. Por favor inicie sesión nuevamente.",
+    "campoRequerido": "Este campo es obligatorio.",
+    "formatoInvalido": "El formato ingresado no es válido."
+  }
+}

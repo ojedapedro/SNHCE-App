@@ -1,0 +1,39 @@
+{
+  "dashboard": {
+    "titulo": "Consola Administrativa",
+    "bienvenida": "Panel de Administración — SNHCE"
+  },
+  "usuarios": {
+    "titulo": "Gestión de Usuarios",
+    "crear": "Crear Usuario",
+    "roles": {
+      "paciente": "Paciente",
+      "medico": "Médico",
+      "enfermero": "Enfermero/a",
+      "farmaceutico": "Farmacéutico/a",
+      "laboratorista": "Laboratorista",
+      "admin": "Administrador",
+      "admin_ti": "Administrador TI",
+      "auditor": "Auditor",
+      "datos": "Oficial de Datos"
+    }
+  },
+  "establecimientos": {
+    "titulo": "Establecimientos de Salud",
+    "tipo": {
+      "hospital": "Hospital",
+      "clinica": "Clínica",
+      "ambulatorio": "Ambulatorio",
+      "cdi": "CDI",
+      "bat": "BAT",
+      "laboratorio": "Laboratorio",
+      "farmacia": "Farmacia"
+    }
+  },
+  "auditoria": {
+    "titulo": "Registro de Auditoría",
+    "accesos": "Accesos a Historias",
+    "exportar": "Exportar Reporte",
+    "filtros": "Filtrar por fecha, usuario o establecimiento"
+  }
+}

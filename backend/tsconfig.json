@@ -1,0 +1,42 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "declaration": true,
+    "removeComments": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "ES2021",
+    "sourceMap": true,
+    "outDir": "./dist",
+    "baseUrl": "./",
+    "incremental": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "noImplicitThis": true,
+    "alwaysStrict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": false,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "paths": {
+      "@common/*": ["src/common/*"],
+      "@modules/*": ["src/modules/*"],
+      "@prisma/*": ["src/common/database/*"],
+      "@config/*": ["src/config/*"],
+      "@filters/*": ["src/common/filters/*"],
+      "@interceptors/*": ["src/common/interceptors/*"],
+      "@guards/*": ["src/common/guards/*"],
+      "@decorators/*": ["src/common/decorators/*"],
+      "@dtos/*": ["src/common/dtos/*"]
+    }
+  },
+  "include": ["src/**/*", "prisma/seed.ts", "test/**/*"],
+  "exclude": ["node_modules", "dist", "coverage"]
+}

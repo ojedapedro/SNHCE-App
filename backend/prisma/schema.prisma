@@ -1,0 +1,781 @@
+// Este es el schema completo de Prisma para el SNHCE.
+// Base de datos: PostgreSQL 15+
+// Convención de nombres: snake_case en DB, camelCase en código TypeScript
+
+generator client {
+  provider = "prisma-client-js"
+  // Habilitar vistas de consulta (útil para reportes)
+  previewFeatures = ["views", "fullTextSearch"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum EstadoIdentidad {
+  PROVISIONAL       // Identidad registrada sin validar
+  EN_VALIDACION     // En proceso de verificación con el CNE
+  VERIFICADO        // Identidad confirmada
+  FUSIONADO         // Registro duplicado, apunta a fusionadoConId
+}
+
+enum Sexo {
+  MASCULINO
+  FEMENINO
+  INTERSEX
+  PREFIERO_NO_DECIR
+}
+
+enum Rol {
+  PACIENTE
+  MEDICO
+  ENFERMERIA
+  ADMINISTRATIVO
+  ADMINISTRADOR_DATOS
+  AUDITOR
+  ADMIN_TI
+}
+
+enum NivelCuenta {
+  BASICO    // Acceso básico — ver solo datos propios, sin historia completa
+  COMPLETO  // Acceso completo — requiere verificación de identidad
+}
+
+enum EstadoUsuario {
+  ACTIVO
+  INACTIVO
+  BLOQUEADO
+  PENDIENTE_VERIFICACION
+}
+
+enum TipoPersonal {
+  MEDICO
+  ENFERMERIA
+  TECNICO
+  ADMINISTRATIVO
+}
+
+enum TipoIdentificador {
+  CEDULA_VE        // Cédula de Identidad venezolana
+  PASAPORTE        // Pasaporte (cualquier país)
+  CEDULA_MADRE_HIJO // Para recién nacidos sin cédula propia
+  PROVISIONAL      // ID interno provisional hasta verificación
+  RNE              // Registro Nacional de Extranjeros
+}
+
+enum TipoEstablecimiento {
+  HOSPITAL
+  CDI                     // Centro de Diagnóstico Integral
+  AMBULATORIO
+  CONSULTORIO
+  MODULO_BARRIO_ADENTRO
+}
+
+enum Dependencia {
+  MPPS    // Ministerio del Poder Popular para la Salud
+  IVSS    // Instituto Venezolano de los Seguros Sociales
+  IPASME  // Instituto de Previsión Social del Magisterio
+  DEFENSA // Sanidad Militar
+  PRIVADO
+}
+
+enum ModoOperacion {
+  CONECTADO  // Operación normal con conectividad al sistema central
+  AUTONOMO   // Sin conectividad — almacena localmente para sincronizar luego
+  DEGRADADO  // Conectividad parcial o intermitente
+}
+
+enum EstadoCita {
+  SOLICITADA
+  CONFIRMADA
+  EN_ESPERA
+  ATENDIDA
+  INASISTENCIA
+  CANCELADA
+  REPROGRAMADA
+}
+
+enum CanalCita {
+  PORTAL_WEB
+  TELEFONO
+  PRESENCIAL
+  APP_MOVIL
+}
+
+enum TipoEpisodio {
+  CONSULTA
+  EMERGENCIA
+  HOSPITALIZACION
+  CONTROL
+}
+
+enum EstadoEpisodio {
+  ABIERTO
+  CERRADO
+  SUSPENDIDO
+}
+
+enum TipoDiagnostico {
+  PRINCIPAL
+  SECUNDARIO
+  COMORBILIDAD
+}
+
+enum EstadoDiagnostico {
+  ACTIVO
+  RESUELTO
+  CRONICO
+  DESCARTADO
+}
+
+enum TipoAlergia {
+  ALERGIA
+  ANTECEDENTE_PERSONAL
+  ANTECEDENTE_FAMILIAR
+}
+
+enum Severidad {
+  LEVE
+  MODERADA
+  GRAVE
+  MUY_GRAVE
+}
+
+enum EstadoPrescripcion {
+  ACTIVA
+  DISPENSADA
+  VENCIDA
+  CANCELADA
+  SUSPENDIDA
+}
+
+enum Adherencia {
+  COMPLETA
+  PARCIAL
+  NO_ADHERENTE
+  DESCONOCIDA
+}
+
+enum EstadoReposo {
+  VIGENTE
+  VENCIDO
+  ANULADO
+}
+
+enum TipoOrden {
+  LABORATORIO
+  IMAGEN
+  PROCEDIMIENTO
+}
+
+enum EstadoOrden {
+  SOLICITADA
+  EN_PROCESO
+  COMPLETADA
+  CANCELADA
+}
+
+enum Prioridad {
+  RUTINA
+  URGENTE
+  STAT // Inmediato — emergencia
+}
+
+enum EstadoReferencia {
+  EMITIDA
+  ACEPTADA
+  RECHAZADA
+  ATENDIDA
+  CONTRARREFERIDA
+}
+
+enum TipoConsentimiento {
+  TRATAMIENTO_DATOS  // Consentimiento GDPR/LOPDP para tratamiento de datos
+  ACCESO_HISTORIA    // Permiso para que un tercero acceda a la historia
+  INVESTIGACION      // Participación en estudios epidemiológicos
+}
+
+enum AccionAuditoria {
+  LEER
+  CREAR
+  ACTUALIZAR
+  LOGIN
+  LOGOUT
+  ACCESO_EMERGENCIA      // Break-glass access
+  EXPORTAR
+  BUSCAR
+  VALIDAR_IDENTIDAD
+  FUSIONAR_DUPLICADO     // Fusión de registros duplicados en MPI
+  REVOCAR_CONSENTIMIENTO
+}
+
+// ============================================================
+// ===== MPI — ÍNDICE MAESTRO DE PACIENTES =====
+// ============================================================
+
+/// Registro maestro de paciente.
+/// Los datos demográficos sensibles se almacenan CIFRADOS (envelope encryption via Vault).
+/// La tabla NUNCA se elimina físicamente — las bajas son lógicas.
+model Paciente {
+  id              String          @id @default(uuid())
+  /// Estado del proceso de validación de identidad
+  estadoIdentidad EstadoIdentidad @default(PROVISIONAL)
+  /// Si el registro fue fusionado, apunta al registro superviviente (nunca se borra el origen)
+  fusionadoConId  String?
+  fusionadoCon    Paciente?       @relation("Fusion", fields: [fusionadoConId], references: [id])
+  fusionesOrigen  Paciente[]      @relation("Fusion")
+
+  // ===== Datos demográficos cifrados (envelope encryption) =====
+  /// Nombres cifrados con la DEK del paciente
+  nombresCifrado   String
+  /// Apellidos cifrados
+  apellidosCifrado String
+  /// Fecha de nacimiento — almacenada en claro (necesaria para lógica clínica)
+  fechaNacimiento  DateTime
+  sexo             Sexo
+
+  // ===== Datos de contacto cifrados =====
+  telefonoCifrado  String? // encrypted
+  correoCifrado    String? // encrypted
+  direccionCifrado String? // encrypted
+
+  // ===== Timestamps y auditoría =====
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+  /// UUID del usuario que creó el registro
+  creadoPor     String
+
+  // ===== Relaciones =====
+  identificadores  IdentificadorPaciente[]
+  usuario          Usuario?
+  citas            Cita[]
+  episodios        Episodio[]
+  consentimientos  Consentimiento[]
+  auditoriasAcceso AuditoriaAcceso[]
+  alergias         AlergiaAntecedente[]
+
+  @@index([estadoIdentidad])
+  @@index([fechaNacimiento])
+  @@map("pacientes")
+}
+
+/// Identificadores de documento de un paciente.
+/// La búsqueda por cédula/pasaporte usa el hash SHA-256 del valor normalizado,
+/// nunca el valor cifrado directamente.
+model IdentificadorPaciente {
+  id         String    @id @default(uuid())
+  pacienteId String
+  paciente   Paciente  @relation(fields: [pacienteId], references: [id])
+  tipo       TipoIdentificador
+  /// Valor del documento cifrado con la DEK del paciente
+  valorCifrado String
+  /// SHA-256 del valor normalizado — permite búsquedas sin descifrar
+  valorHash    String
+  paisEmision  String?  @default("VE")
+  activo       Boolean  @default(true)
+  creadoEn     DateTime @default(now())
+  creadoPor    String
+
+  @@unique([tipo, valorHash])
+  @@index([valorHash])
+  @@map("identificadores_paciente")
+}
+
+// ============================================================
+// ===== USUARIOS =====
+// ============================================================
+
+/// Usuario del sistema. Puede ser un paciente, personal de salud o administrativo.
+/// La autenticación se delega completamente a Keycloak — aquí solo se almacena
+/// el ID de Keycloak y metadatos de control de acceso.
+model Usuario {
+  id              String        @id @default(uuid())
+  /// ID del usuario en Keycloak (sub del JWT)
+  keycloakId      String        @unique
+  pacienteId      String?       @unique
+  paciente        Paciente?     @relation(fields: [pacienteId], references: [id])
+  personalSaludId String?       @unique
+  personalSalud   PersonalSalud? @relation(fields: [personalSaludId], references: [id])
+  rol             Rol
+  /// BASICO: solo datos propios | COMPLETO: requiere verificación de identidad
+  nivelCuenta     NivelCuenta   @default(BASICO)
+  mfaActivo       Boolean       @default(false)
+  estado          EstadoUsuario @default(ACTIVO)
+  /// Centro de salud donde trabaja principalmente
+  establecimientoId String?
+  establecimiento   Establecimiento? @relation(fields: [establecimientoId], references: [id])
+
+  // ===== Control de sesiones =====
+  ultimoAcceso     DateTime?
+  intentosFallidos Int       @default(0)
+  bloqueadoHasta   DateTime?
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+  creadoPor     String
+
+  // ===== Relaciones =====
+  auditoriasAcceso AuditoriaAcceso[]
+
+  @@index([rol])
+  @@index([estado])
+  @@map("usuarios")
+}
+
+/// Personal de salud (médicos, enfermeros, técnicos, administrativos).
+/// Puede tener un certificado de firma electrónica para prescripciones y reposos.
+model PersonalSalud {
+  id           String      @id @default(uuid())
+  usuario      Usuario?
+  tipoPersonal TipoPersonal
+  /// Número de colegiado — único para médicos y enfermeros
+  nroColegiado  String?    @unique
+  especialidad  String?
+  /// Referencia al certificado de firma en el proveedor externo (ej: SUSCERTE)
+  certFirmaRef   String?
+  certFirmaActivo Boolean  @default(false)
+  establecimientoId String?
+  establecimiento   Establecimiento? @relation(fields: [establecimientoId], references: [id])
+  creadoEn      DateTime   @default(now())
+  actualizadoEn DateTime   @updatedAt
+
+  // ===== Relaciones =====
+  citasComoMedico Cita[]
+  
+  @@index([tipoPersonal])
+  @@index([nroColegiado])
+  @@map("personal_salud")
+}
+
+// ============================================================
+// ===== ESTABLECIMIENTOS =====
+// ============================================================
+
+/// Establecimiento de salud (hospital, CDI, ambulatorio, etc.)
+model Establecimiento {
+  id           String              @id @default(uuid())
+  nombre       String
+  tipo         TipoEstablecimiento
+  dependencia  Dependencia
+  /// Estado venezolano donde se ubica (ej: "Miranda", "Distrito Capital")
+  estado       String
+  municipio    String
+  codigoRif    String?             @unique
+  /// Código asignado por el MPPS para identificación oficial
+  codigoMPPS   String?             @unique
+  latitud      Float?
+  longitud     Float?
+  /// CONECTADO: operación normal | AUTONOMO: modo offline
+  modoOperacion ModoOperacion      @default(CONECTADO)
+  activo       Boolean             @default(true)
+  creadoEn     DateTime            @default(now())
+  actualizadoEn DateTime           @updatedAt
+
+  // ===== Relaciones =====
+  agendas         Agenda[]
+  usuarios        Usuario[]
+  personalSalud   PersonalSalud[]
+  citasComoOrigen Cita[]          @relation("CitaOrigen")
+  episodios       Episodio[]
+
+  @@index([tipo])
+  @@index([dependencia])
+  @@index([estado, municipio])
+  @@map("establecimientos")
+}
+
+/// Agenda de consultas de un establecimiento.
+/// Define la disponibilidad por especialidad y día de la semana.
+model Agenda {
+  id                String          @id @default(uuid())
+  establecimientoId String
+  establecimiento   Establecimiento @relation(fields: [establecimientoId], references: [id])
+  especialidad      String
+  /// 1=Lunes ... 7=Domingo (ISO 8601)
+  diaSemana         Int
+  /// Hora de inicio en formato "HH:MM" (UTC-4 Venezuela)
+  horaInicio        String
+  /// Hora de fin en formato "HH:MM"
+  horaFin           String
+  duracionCitaMin   Int             @default(20)
+  cuposMaximos      Int
+  activo            Boolean         @default(true)
+  creadoEn          DateTime        @default(now())
+
+  @@index([establecimientoId, diaSemana])
+  @@index([especialidad])
+  @@map("agendas")
+}
+
+// ============================================================
+// ===== CITAS =====
+// ============================================================
+
+/// Cita médica agendada.
+model Cita {
+  id                String          @id @default(uuid())
+  pacienteId        String
+  paciente          Paciente        @relation(fields: [pacienteId], references: [id])
+  establecimientoId String
+  establecimiento   Establecimiento @relation("CitaOrigen", fields: [establecimientoId], references: [id])
+  medicoId          String?
+  medico            PersonalSalud?  @relation(fields: [medicoId], references: [id])
+  especialidad      String
+  fechaHora         DateTime
+  duracionMin       Int             @default(20)
+  estado            EstadoCita      @default(SOLICITADA)
+  canal             CanalCita
+  /// Motivo de consulta — cifrado pues es dato clínico sensible
+  motivoConsulta    String?
+  /// Referencia a la cita original si esta es una reprogramación
+  citaOriginalId    String?
+  notas             String?
+  creadoEn          DateTime        @default(now())
+  actualizadoEn     DateTime        @updatedAt
+  creadoPor         String
+
+  // ===== Relaciones =====
+  episodio          Episodio?
+
+  @@index([pacienteId])
+  @@index([establecimientoId, fechaHora])
+  @@index([medicoId, fechaHora])
+  @@index([estado])
+  @@map("citas")
+}
+
+// ============================================================
+// ===== EPISODIOS CLÍNICOS =====
+// ============================================================
+
+/// Episodio de atención clínica.
+/// Todos los datos narrativos (evolución, motivo, plan) están CIFRADOS.
+/// Esta tabla es APPEND-ONLY: las modificaciones generan una nueva versión.
+model Episodio {
+  id                String          @id @default(uuid())
+  pacienteId        String
+  paciente          Paciente        @relation(fields: [pacienteId], references: [id])
+  /// null para episodios de emergencia sin cita previa
+  citaId            String?         @unique
+  cita              Cita?           @relation(fields: [citaId], references: [id])
+  establecimientoId String
+  establecimiento   Establecimiento @relation(fields: [establecimientoId], references: [id])
+  medicoId          String?
+  tipoEpisodio      TipoEpisodio
+  estado            EstadoEpisodio  @default(ABIERTO)
+
+  // ===== Signos vitales al inicio del episodio =====
+  pesoKg               Float?
+  tallaCm              Float?
+  presionSistolica     Int?
+  presionDiastolica    Int?
+  frecuenciaCardiaca   Int?
+  frecuenciaRespiratoria Int?
+  temperaturaCelsius   Float?
+  saturacionO2         Float?
+
+  // ===== Datos clínicos narrativos — CIFRADOS =====
+  motivoConsultaCifrado  String?
+  evolucionCifrado       String?
+  planTratamientoCifrado String?
+
+  // ===== Acceso de emergencia (break-glass) =====
+  /// Si el médico accedió sin relación asistencial activa (emergencia)
+  esAccesoEmergencia     Boolean @default(false)
+  justificacionEmergencia String?
+
+  /// Número de versión del episodio (para versionado append-only)
+  version       Int      @default(1)
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+  creadoPor     String
+
+  // ===== Relaciones =====
+  diagnosticos   Diagnostico[]
+  alergias       AlergiaAntecedente[]
+  prescripciones Prescripcion[]
+  repososMedicos ReposoMedico[]
+  ordenes        OrdenResultado[]
+  referencias    Referencia[]
+
+  @@index([pacienteId, creadoEn])
+  @@index([establecimientoId])
+  @@index([estado])
+  @@map("episodios")
+}
+
+/// Diagnóstico asociado a un episodio.
+/// Usa codificación CIE-10 (estándar MPPS).
+model Diagnostico {
+  id          String           @id @default(uuid())
+  episodioId  String
+  episodio    Episodio         @relation(fields: [episodioId], references: [id])
+  /// Código CIE-10 (ej: "J06.9" — Infección aguda de vías respiratorias superiores)
+  codigoCie10 String
+  descripcion String
+  tipoDx      TipoDiagnostico
+  estadoDx    EstadoDiagnostico @default(ACTIVO)
+  observaciones String?
+  version     Int              @default(1)
+  creadoEn    DateTime         @default(now())
+  creadoPor   String
+
+  @@index([episodioId])
+  @@index([codigoCie10])
+  @@map("diagnosticos")
+}
+
+/// Alergia o antecedente (personal o familiar) del paciente.
+/// Vinculado directamente al paciente para acceso rápido en emergencias.
+model AlergiaAntecedente {
+  id           String     @id @default(uuid())
+  /// FK directa al paciente — permite acceso rápido sin pasar por episodio
+  pacienteId   String
+  paciente     Paciente   @relation(fields: [pacienteId], references: [id])
+  episodioId   String?
+  episodio     Episodio?  @relation(fields: [episodioId], references: [id])
+  tipo         TipoAlergia
+  /// Código SNOMED CT cuando esté disponible
+  codigoSnomed String?
+  descripcion  String
+  /// Sustancia, medicamento o alimento causante
+  agente       String
+  severidad    Severidad?
+  reaccion     String?
+  activa       Boolean    @default(true)
+  version      Int        @default(1)
+  creadoEn     DateTime   @default(now())
+  creadoPor    String
+
+  @@index([pacienteId, tipo])
+  @@index([activa])
+  @@map("alergias_antecedentes")
+}
+
+/// Prescripción médica.
+/// Incluye código RxNorm, firma electrónica y código QR de verificación.
+model Prescripcion {
+  id                String             @id @default(uuid())
+  episodioId        String
+  episodio          Episodio           @relation(fields: [episodioId], references: [id])
+  /// Código RxNorm del medicamento (interoperabilidad internacional)
+  rxnormCui         String?
+  nombreMedicamento String
+  dosis             String
+  /// Vía de administración (oral, IM, IV, SC, tópica, etc.)
+  via               String
+  /// Frecuencia de administración (ej: "cada 8 horas", "una vez al día")
+  frecuencia        String
+  duracionDias      Int?
+  cantidadTotal     String?
+  instrucciones     String?
+  /// Referencia a la firma digital en el proveedor de firma (SUSCERTE/SAFIR)
+  firmaRef          String?
+  firmado           Boolean            @default(false)
+  /// URL opaca de verificación de autenticidad (sin datos médicos)
+  codigoQr          String?
+  urlVerificacion   String?
+  estado            EstadoPrescripcion @default(ACTIVA)
+  version           Int                @default(1)
+  creadoEn          DateTime           @default(now())
+  actualizadoEn     DateTime           @updatedAt
+  creadoPor         String
+
+  // ===== Relaciones =====
+  seguimientos      Seguimiento[]
+
+  @@index([episodioId])
+  @@index([estado])
+  @@map("prescripciones")
+}
+
+/// Seguimiento de adherencia al tratamiento prescrito.
+model Seguimiento {
+  id             String       @id @default(uuid())
+  prescripcionId String
+  prescripcion   Prescripcion @relation(fields: [prescripcionId], references: [id])
+  fechaRegistro  DateTime     @default(now())
+  adherencia     Adherencia
+  observaciones  String?
+  proximaRevision DateTime?
+  metasTerapeuticas String?
+  creadoPor      String
+
+  @@index([prescripcionId])
+  @@map("seguimientos")
+}
+
+/// Reposo médico emitido por un médico.
+/// El código de verificación pública NO expone el diagnóstico (privacidad).
+model ReposoMedico {
+  id                 String       @id @default(uuid())
+  episodioId         String
+  episodio           Episodio     @relation(fields: [episodioId], references: [id])
+  fechaInicio        DateTime
+  fechaFin           DateTime
+  diasReposo         Int
+  /// FK al diagnóstico — solo visible para médico/paciente, NO en verificación pública
+  diagnosticoId      String?
+  firmaRef           String?
+  firmado            Boolean      @default(false)
+  codigoQr           String?
+  /// Código opaco (UUID) para verificación pública — no revela diagnóstico
+  codigoVerificacion String       @unique @default(uuid())
+  urlVerificacion    String?
+  estado             EstadoReposo @default(VIGENTE)
+  version            Int          @default(1)
+  creadoEn           DateTime     @default(now())
+  creadoPor          String
+
+  @@index([episodioId])
+  @@index([estado])
+  @@map("reposos_medicos")
+}
+
+/// Orden de estudio (laboratorio, imagen, procedimiento).
+/// Los resultados se almacenan cifrados; los archivos en MinIO.
+model OrdenResultado {
+  id               String      @id @default(uuid())
+  episodioId       String
+  episodio         Episodio    @relation(fields: [episodioId], references: [id])
+  tipo             TipoOrden
+  /// Código LOINC del estudio (ej: "24357-6" — Análisis de orina)
+  codigoLoinc      String?
+  descripcion      String
+  estado           EstadoOrden @default(SOLICITADA)
+  prioridad        Prioridad   @default(RUTINA)
+  /// Resultado cifrado con la DEK del paciente
+  resultadoCifrado String?
+  observaciones    String?
+  version          Int         @default(1)
+  creadoEn         DateTime    @default(now())
+  actualizadoEn    DateTime    @updatedAt
+  creadoPor        String
+
+  // ===== Relaciones =====
+  archivos          ArchivoResultado[]
+
+  @@index([episodioId])
+  @@index([tipo, estado])
+  @@map("ordenes_resultados")
+}
+
+/// Archivo de resultado adjunto (imagen DICOM, PDF de laboratorio, etc.)
+/// Almacenado en MinIO cifrado — la clave del objeto se guarda cifrada.
+model ArchivoResultado {
+  id            String         @id @default(uuid())
+  ordenId       String
+  orden         OrdenResultado @relation(fields: [ordenId], references: [id])
+  nombreArchivo String
+  tipoMime      String
+  /// Clave del objeto en MinIO — almacenada cifrada con la DEK del paciente
+  minioKey      String
+  tamanioBytes  Int
+  /// Checksum SHA-256 del archivo original para verificar integridad
+  checksumSha256 String
+  creadoEn      DateTime       @default(now())
+  creadoPor     String
+
+  @@index([ordenId])
+  @@map("archivos_resultado")
+}
+
+/// Referencia a otro establecimiento de mayor complejidad.
+model Referencia {
+  id                       String           @id @default(uuid())
+  episodioId               String
+  episodio                 Episodio         @relation(fields: [episodioId], references: [id])
+  establecimientoOrigenId  String
+  establecimientoDestinoId String
+  especialidadDestino      String
+  motivoReferencia         String
+  /// Nivel de atención del establecimiento destino (I, II, III, IV)
+  nivelAtencionDestino     String
+  estado                   EstadoReferencia @default(EMITIDA)
+  fechaEmision             DateTime         @default(now())
+  fechaVencimiento         DateTime?
+  observaciones            String?
+  /// Respuesta del centro destino (contrarreferencia)
+  contraReferencia         String?
+  version                  Int              @default(1)
+  creadoEn                 DateTime         @default(now())
+  actualizadoEn            DateTime         @updatedAt
+  creadoPor                String
+
+  @@index([episodioId])
+  @@index([establecimientoDestinoId, estado])
+  @@map("referencias")
+}
+
+/// Consentimiento informado del paciente.
+/// Registro inmutable del otorgamiento o revocación de consentimiento.
+model Consentimiento {
+  id                String             @id @default(uuid())
+  pacienteId        String
+  paciente          Paciente           @relation(fields: [pacienteId], references: [id])
+  tipo              TipoConsentimiento
+  /// Versión del documento de consentimiento firmado
+  version           String
+  otorgado          Boolean
+  fechaOtorgamiento DateTime?
+  fechaRevocacion   DateTime?
+  /// IP desde donde se otorgó/revocó (para auditoría)
+  ip                String?
+  /// Info del dispositivo (user-agent, etc.)
+  dispositivoInfo   String?
+  creadoEn          DateTime           @default(now())
+
+  @@index([pacienteId, tipo])
+  @@map("consentimientos")
+}
+
+// ============================================================
+// ===== AUDITORÍA (append-only, hash SHA-256 encadenado) =====
+// ============================================================
+
+/// Registro de auditoría de accesos y operaciones.
+/// REGLAS CRÍTICAS:
+/// 1. Esta tabla es SOLO INSERCIÓN — nunca UPDATE ni DELETE
+/// 2. Cada registro contiene el hash del registro anterior (blockchain-lite)
+/// 3. El hash garantiza la integridad de la cadena de auditoría
+/// 4. En producción debe estar en PostgreSQL con RLS y política solo-inserción
+model AuditoriaAcceso {
+  /// BigInt autoincremental para soportar alto volumen (millones de registros/día)
+  id          BigInt   @id @default(autoincrement())
+  /// Hash SHA-256 del registro anterior (null solo para el primer registro de cada partición)
+  hashAnterior String?
+  /// SHA-256(timestamp + usuarioId + pacienteId + accion + recurso + recursoId + metadatos + hashAnterior)
+  hashActual   String
+
+  // ===== Datos del evento auditado =====
+  usuarioId        String
+  usuario          Usuario          @relation(fields: [usuarioId], references: [id])
+  pacienteId       String?
+  paciente         Paciente?        @relation(fields: [pacienteId], references: [id])
+  accion           AccionAuditoria
+  /// Nombre del recurso accedido (ej: 'episodio', 'prescripcion', 'historia')
+  recurso          String
+  recursoId        String?
+  establecimientoId String?
+  /// IP del cliente (puede ser del proxy — también registrar X-Forwarded-For)
+  ipDireccion      String
+  userAgent        String?
+  /// Obligatoria para accesos de emergencia (break-glass)
+  justificacion    String?
+  /// Datos adicionales según el tipo de acción (JSON flexible)
+  metadatos        Json?
+  creadoEn         DateTime         @default(now())
+
+  // Nota: En producción, configurar particionado por rango de fechas en PostgreSQL:
+  // CREATE TABLE auditoria_accesos PARTITION BY RANGE (creado_en);
+  @@index([usuarioId])
+  @@index([pacienteId])
+  @@index([creadoEn])
+  @@index([accion])
+  @@map("auditoria_accesos")
+}

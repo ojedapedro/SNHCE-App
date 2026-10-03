@@ -1,0 +1,65 @@
+{
+  "agenda": {
+    "titulo": "Agenda del Día",
+    "hoy": "Hoy",
+    "sinCitas": "No hay citas para esta fecha",
+    "pendientes": "{{count}} pacientes pendientes",
+    "acciones": {
+      "atender": "Atender",
+      "verHistorial": "Ver Historial",
+      "inasistencia": "Marcar Inasistencia"
+    }
+  },
+  "paciente": {
+    "buscar": "Buscar Paciente",
+    "buscarPor": "Buscar por documento o nombre",
+    "tipoDocumento": "Tipo de Documento",
+    "nroDocumento": "Número de Documento",
+    "nombres": "Nombres",
+    "apellidos": "Apellidos",
+    "fechaNacimiento": "Fecha de Nacimiento",
+    "sinRelacion": "No tiene relación clínica con este paciente",
+    "solicitarAcceso": "Solicitar Acceso",
+    "accesoEmergencia": "Acceso de Emergencia",
+    "sinResultados": "No se encontraron pacientes con los criterios indicados"
+  },
+  "consulta": {
+    "nueva": "Nueva Consulta",
+    "signosVitales": "Signos Vitales",
+    "presionArterial": "Presión Arterial (mmHg)",
+    "frecuenciaCardiaca": "Frecuencia Cardíaca (lpm)",
+    "frecuenciaRespiratoria": "Frecuencia Respiratoria (rpm)",
+    "temperatura": "Temperatura (°C)",
+    "saturacion": "Saturación O₂ (%)",
+    "peso": "Peso (kg)",
+    "talla": "Talla (cm)",
+    "imc": "IMC",
+    "motivoConsulta": "Motivo de Consulta",
+    "evolucionClinica": "Evolución Clínica",
+    "diagnostico": "Diagnóstico (CIE-10)",
+    "plan": "Plan Terapéutico",
+    "plantillas": "Plantillas por especialidad",
+    "dictarNota": "Dictar nota",
+    "guardandoBorrador": "Guardando borrador...",
+    "guardar": "Guardar Consulta"
+  },
+  "resumen": {
+    "titulo": "Resumen Clínico",
+    "alergias": "Alergias",
+    "sinAlergias": "Sin alergias conocidas",
+    "diagnosticosActivos": "Diagnósticos Activos",
+    "medicamentosActuales": "Medicamentos Actuales",
+    "ultimosSignos": "Últimos Signos Vitales",
+    "ultimosExamenes": "Últimos Exámenes",
+    "alertasClinicas": "Alertas Clínicas"
+  },
+  "emergencia": {
+    "titulo": "Acceso de Emergencia",
+    "advertencia": "⚠️ Este acceso quedará registrado en el sistema de auditoría y será reportado al paciente.",
+    "justificacion": "Justificación del acceso de emergencia",
+    "justificacionPlaceholder": "Describa la situación de emergencia que justifica este acceso (mínimo 20 caracteres)...",
+    "declaracion": "Declaro que este es un acceso de emergencia médica justificado",
+    "confirmar": "Confirmar Acceso de Emergencia",
+    "banner": "🚨 ACCESO DE EMERGENCIA — Este acceso está siendo auditado"
+  }
+}

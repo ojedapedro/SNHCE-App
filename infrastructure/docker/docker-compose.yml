@@ -1,0 +1,360 @@
+# =============================================================================
+# SNHCE - Sistema Nacional de Historia Clínica Electrónica
+# Orquestación de servicios Docker para ambiente de desarrollo
+# =============================================================================
+# USO: docker compose --env-file .env up -d
+# NOTA: Este archivo es para desarrollo local. NO usar en producción sin
+#       ajustar las configuraciones de seguridad correspondientes.
+# =============================================================================
+
+version: "3.9"
+
+# ---------------------------------------------------------------------------
+# Redes
+# ---------------------------------------------------------------------------
+networks:
+  snhce-network:
+    driver: bridge
+    name: snhce-network
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+# ---------------------------------------------------------------------------
+# Volúmenes nombrados para persistencia de datos
+# ---------------------------------------------------------------------------
+volumes:
+  postgres-data:
+    name: snhce-postgres-data
+  postgres-replica-data:
+    name: snhce-postgres-replica-data
+  redis-data:
+    name: snhce-redis-data
+  minio-data:
+    name: snhce-minio-data
+  keycloak-data:
+    name: snhce-keycloak-data
+  vault-data:
+    name: snhce-vault-data
+  backend-node-modules:
+    name: snhce-backend-node-modules
+
+# ---------------------------------------------------------------------------
+# Servicios
+# ---------------------------------------------------------------------------
+services:
+
+  # -------------------------------------------------------------------------
+  # PostgreSQL 16 - Base de datos principal (lectura/escritura)
+  # -------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: snhce-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # Configuración para habilitar replicación lógica
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=es_VE.UTF-8"
+    command: >
+      postgres
+        -c wal_level=replica
+        -c max_wal_senders=3
+        -c max_replication_slots=3
+        -c hot_standby=on
+        -c log_timezone=America/Caracas
+        -c timezone=America/Caracas
+        -c lc_messages=es_VE.UTF-8
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      # Script de inicialización: crea DB de Keycloak y configura usuario de replicación
+      - ./init-scripts/postgres-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      snhce-network:
+        ipv4_address: 172.28.0.10
+    labels:
+      com.snhce.service: "postgres-primary"
+      com.snhce.environment: "development"
+
+  # -------------------------------------------------------------------------
+  # PostgreSQL 16 - Réplica de solo lectura (hot standby)
+  # Usada para consultas analíticas y reportes, aliviando la carga del primario
+  # -------------------------------------------------------------------------
+  postgres-replica:
+    image: postgres:16-alpine
+    container_name: snhce-postgres-replica
+    restart: unless-stopped
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      # Variables para configurar la réplica por streaming
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    command: >
+      bash -c "
+        until pg_basebackup -h postgres -D /var/lib/postgresql/data -U ${POSTGRES_USER} -Fp -Xs -P -R 2>/dev/null; do
+          echo 'Esperando al servidor primario...'
+          sleep 2
+        done
+        postgres -c hot_standby=on -c timezone=America/Caracas
+      "
+    volumes:
+      - postgres-replica-data:/var/lib/postgresql/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    networks:
+      snhce-network:
+        ipv4_address: 172.28.0.11
+    labels:
+      com.snhce.service: "postgres-replica"
+      com.snhce.environment: "development"
+
+  # -------------------------------------------------------------------------
+  # Redis 7 - Caché distribuida, colas de mensajes y sesiones
+  # Persistencia AOF habilitada para recuperación ante fallos
+  # -------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: snhce-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: >
+      redis-server
+        --requirepass ${REDIS_PASSWORD}
+        --appendonly yes
+        --appendfsync everysec
+        --maxmemory 512mb
+        --maxmemory-policy allkeys-lru
+        --loglevel notice
+        --bind 0.0.0.0
+        --tcp-keepalive 300
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      snhce-network:
+        ipv4_address: 172.28.0.20
+    labels:
+      com.snhce.service: "redis"
+      com.snhce.environment: "development"
+
+  # -------------------------------------------------------------------------
+  # MinIO - Almacenamiento de objetos compatible con S3
+  # Para documentos clínicos, resultados de laboratorio e imágenes médicas
+  # -------------------------------------------------------------------------
+  minio:
+    image: minio/minio:latest
+    container_name: snhce-minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000"   # API S3
+      - "9001:9001"   # Consola web de administración
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_BROWSER_REDIRECT_URL: http://localhost:9001
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    networks:
+      snhce-network:
+        ipv4_address: 172.28.0.30
+    labels:
+      com.snhce.service: "minio"
+      com.snhce.environment: "development"
+
+  # -------------------------------------------------------------------------
+  # Keycloak 24 - Servidor de identidad y acceso (IAM/SSO)
+  # Gestión de usuarios, roles, MFA y autenticación OAuth2/OIDC
+  # -------------------------------------------------------------------------
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    container_name: snhce-keycloak
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      # Credenciales del administrador de Keycloak
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      # Conexión a la base de datos de Keycloak (en el mismo PostgreSQL)
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/${KEYCLOAK_DB:-keycloak}
+      KC_DB_USERNAME: ${POSTGRES_USER}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      # Configuración del servidor
+      KC_HTTP_ENABLED: "true"
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_HTTPS: "false"
+      KC_LOG_LEVEL: INFO
+      KC_FEATURES: token-exchange,admin-fine-grained-authz
+    # Importa el realm de desarrollo automáticamente al iniciar
+    command: >
+      start-dev
+        --import-realm
+    volumes:
+      - keycloak-data:/opt/keycloak/data
+      # Directorio con el archivo de exportación del realm
+      - ../keycloak:/opt/keycloak/data/import:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health/ready || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 90s
+    networks:
+      snhce-network:
+        ipv4_address: 172.28.0.40
+    labels:
+      com.snhce.service: "keycloak"
+      com.snhce.environment: "development"
+
+  # -------------------------------------------------------------------------
+  # HashiCorp Vault 1.16 - Gestión de secretos
+  # En desarrollo: modo dev con almacenamiento en archivo
+  # EN PRODUCCIÓN: configurar con alta disponibilidad y TLS obligatorio
+  # -------------------------------------------------------------------------
+  vault:
+    image: hashicorp/vault:1.16
+    container_name: snhce-vault
+    restart: unless-stopped
+    ports:
+      - "8200:8200"
+    environment:
+      # Token raíz de desarrollo (NUNCA usar en producción)
+      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_DEV_ROOT_TOKEN_ID}
+      VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
+      VAULT_ADDR: "http://0.0.0.0:8200"
+      VAULT_LOG_LEVEL: info
+    cap_add:
+      - IPC_LOCK
+    command: server -config=/vault/config/config.hcl
+    volumes:
+      - vault-data:/vault/data
+      - ../vault/config.hcl:/vault/config/config.hcl:ro
+      - ../vault/init-secrets.sh:/vault/scripts/init-secrets.sh:ro
+    healthcheck:
+      test: ["CMD", "vault", "status", "-address=http://localhost:8200"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      snhce-network:
+        ipv4_address: 172.28.0.50
+    labels:
+      com.snhce.service: "vault"
+      com.snhce.environment: "development"
+
+  # -------------------------------------------------------------------------
+  # Backend NestJS - API principal del sistema SNHCE
+  # -------------------------------------------------------------------------
+  backend:
+    build:
+      context: ../../backend
+      dockerfile: Dockerfile
+      target: development
+    container_name: snhce-backend
+    restart: unless-stopped
+    ports:
+      - "${BACKEND_PORT:-3000}:3000"
+    env_file:
+      - .env
+    environment:
+      # Sobreescrituras específicas para el ambiente Docker
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      DATABASE_REPLICA_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-replica:5432/${POSTGRES_DB}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      MINIO_ENDPOINT: http://minio:9000
+      KEYCLOAK_URL: http://keycloak:8080
+      VAULT_ADDR: http://vault:8200
+      SMTP_HOST: maildev
+      SMTP_PORT: 1025
+    volumes:
+      # Montaje del código fuente para hot reload en desarrollo
+      - ../../backend/src:/app/src:delegated
+      - ../../backend/test:/app/test:delegated
+      # Evitar sobreescribir node_modules del contenedor
+      - backend-node-modules:/app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      vault:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      snhce-network:
+        ipv4_address: 172.28.0.60
+    labels:
+      com.snhce.service: "backend"
+      com.snhce.environment: "development"
+
+  # -------------------------------------------------------------------------
+  # MailDev - Capturador de correos electrónicos para desarrollo
+  # Interfaz web en http://localhost:1080
+  # Servidor SMTP en localhost:1025
+  # -------------------------------------------------------------------------
+  maildev:
+    image: maildev/maildev:latest
+    container_name: snhce-maildev
+    restart: unless-stopped
+    ports:
+      - "1080:1080"   # Interfaz web para revisar correos enviados
+      - "1025:1025"   # Servidor SMTP receptor
+    environment:
+      MAILDEV_WEB_PORT: 1080
+      MAILDEV_SMTP_PORT: 1025
+      # Sin autenticación en desarrollo (correos solo accesibles localmente)
+      MAILDEV_INCOMING_USER: ""
+      MAILDEV_INCOMING_PASS: ""
+    networks:
+      snhce-network:
+        ipv4_address: 172.28.0.70
+    labels:
+      com.snhce.service: "maildev"
+      com.snhce.environment: "development"

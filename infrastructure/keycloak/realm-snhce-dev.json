@@ -1,0 +1,201 @@
+{
+  "id": "snhce",
+  "realm": "snhce",
+  "displayName": "SNHCE — Sistema Nacional de Historia Clínica Electrónica",
+  "displayNameHtml": "<strong>SNHCE</strong><br/><small>Sistema Nacional de Historia Clínica Electrónica</small>",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": true,
+  "loginWithEmailAllowed": false,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "verifyEmail": true,
+  "loginTheme": "keycloak",
+  "accountTheme": "keycloak.v3",
+  "internationalizationEnabled": true,
+  "supportedLocales": ["es"],
+  "defaultLocale": "es",
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "maxFailureWaitSeconds": 900,
+  "minimumQuickLoginWaitSeconds": 60,
+  "waitIncrementSeconds": 60,
+  "quickLoginCheckMilliSeconds": 1000,
+  "maxDeltaTimeSeconds": 43200,
+  "failureFactor": 5,
+  "passwordPolicy": "length(12) and upperCase(1) and lowerCase(1) and digits(1) and specialChars(1) and notUsername(undefined) and passwordHistory(10)",
+  "accessTokenLifespan": 300,
+  "ssoSessionMaxLifespan": 28800,
+  "ssoSessionIdleTimeout": 3600,
+  "offlineSessionMaxLifespan": 5184000,
+  "otpPolicyType": "totp",
+  "otpPolicyAlgorithm": "HmacSHA1",
+  "otpPolicyInitialCounter": 0,
+  "otpPolicyDigits": 6,
+  "otpPolicyLookAheadWindow": 1,
+  "otpPolicyPeriod": 30,
+  "otpSupportedApplications": ["FreeOTP", "Google Authenticator", "Microsoft Authenticator"],
+  "webAuthnPolicyRpEntityName": "SNHCE",
+  "webAuthnPolicyRpId": "localhost",
+  "webAuthnPolicySignatureAlgorithms": ["ES256"],
+  "webAuthnPolicyAttestationConveyancePreference": "not specified",
+  "webAuthnPolicyAuthenticatorAttachment": "not specified",
+  "webAuthnPolicyRequireResidentKey": "not specified",
+  "webAuthnPolicyUserVerificationRequirement": "preferred",
+  "webAuthnPolicyCreateTimeout": 0,
+  "webAuthnPolicyAvoidSameAuthenticatorRegister": false,
+  "roles": {
+    "realm": [
+      {
+        "name": "PACIENTE",
+        "description": "Usuario paciente — acceso al portal de citas y (si validado) a su historia"
+      },
+      {
+        "name": "MEDICO",
+        "description": "Médico — acceso clínico completo con relación asistencial vigente"
+      },
+      {
+        "name": "ENFERMERIA",
+        "description": "Enfermería — acceso parcial a datos clínicos (signos vitales, evolución, medicación)"
+      },
+      {
+        "name": "ADMINISTRATIVO",
+        "description": "Personal administrativo — solo identificación y citas, nunca datos clínicos"
+      },
+      {
+        "name": "ADMINISTRADOR_DATOS",
+        "description": "Administrador de datos — gestión del MPI, catálogos, usuarios y duplicados"
+      },
+      {
+        "name": "AUDITOR",
+        "description": "Auditor — solo lectura de bitácora de auditoría, sin datos clínicos"
+      },
+      {
+        "name": "ADMIN_TI",
+        "description": "Administrador de TI — gestión técnica del sistema"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "snhce-backend",
+      "name": "SNHCE Backend Service",
+      "description": "Cliente confidencial para el backend NestJS",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "DEV-ONLY-CHANGE-IN-PRODUCTION",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false
+    },
+    {
+      "clientId": "snhce-portal",
+      "name": "Portal del Paciente",
+      "description": "Aplicación web pública para pacientes (PWA)",
+      "enabled": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "redirectUris": [
+        "http://localhost:5173/*",
+        "https://*.vercel.app/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5173",
+        "+"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
+    },
+    {
+      "clientId": "snhce-clinica",
+      "name": "Aplicación Clínica",
+      "description": "Aplicación para médicos y enfermería",
+      "enabled": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "redirectUris": [
+        "http://localhost:5175/*",
+        "https://*.vercel.app/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5175",
+        "+"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
+    },
+    {
+      "clientId": "snhce-admin",
+      "name": "Consola Administrativa",
+      "description": "Consola para administrativos, auditores y TI",
+      "enabled": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "redirectUris": [
+        "http://localhost:5174/*",
+        "https://*.vercel.app/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5174",
+        "+"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
+    }
+  ],
+  "requiredActions": [
+    {
+      "alias": "CONFIGURE_TOTP",
+      "name": "Configure OTP",
+      "providerId": "CONFIGURE_TOTP",
+      "enabled": true,
+      "defaultAction": true,
+      "priority": 10,
+      "config": {}
+    },
+    {
+      "alias": "VERIFY_EMAIL",
+      "name": "Verify Email",
+      "providerId": "VERIFY_EMAIL",
+      "enabled": true,
+      "defaultAction": true,
+      "priority": 50,
+      "config": {}
+    },
+    {
+      "alias": "UPDATE_PASSWORD",
+      "name": "Update Password",
+      "providerId": "UPDATE_PASSWORD",
+      "enabled": true,
+      "defaultAction": false,
+      "priority": 30,
+      "config": {}
+    }
+  ],
+  "smtpServer": {
+    "host": "maildev",
+    "port": "1025",
+    "from": "noreply@snhce.dev",
+    "fromDisplayName": "SNHCE — Sistema de Salud",
+    "replyTo": "",
+    "ssl": "false",
+    "starttls": "false",
+    "auth": "false"
+  }
+}

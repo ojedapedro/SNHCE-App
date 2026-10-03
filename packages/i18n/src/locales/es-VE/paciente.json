@@ -1,0 +1,75 @@
+{
+  "citas": {
+    "titulo": "Mis Citas",
+    "proxima": "Próxima Cita",
+    "sinCitas": "No tiene citas próximas",
+    "solicitarCita": "Solicitar Cita",
+    "estado": {
+      "programada": "Programada",
+      "confirmada": "Confirmada",
+      "realizada": "Realizada",
+      "cancelada": "Cancelada",
+      "inasistencia": "Inasistencia",
+      "enEspera": "En lista de espera"
+    },
+    "nueva": {
+      "titulo": "Nueva Cita Médica",
+      "paso1": "Establecimiento",
+      "paso2": "Especialidad",
+      "paso3": "Médico y Fecha",
+      "paso4": "Horario",
+      "paso5": "Motivo",
+      "paso6": "Confirmación",
+      "paso7": "¡Cita Confirmada!",
+      "seleccionarEstado": "Seleccione el estado",
+      "seleccionarMunicipio": "Seleccione el municipio",
+      "seleccionarEstablecimiento": "Seleccione el establecimiento de salud",
+      "seleccionarEspecialidad": "Seleccione la especialidad",
+      "seleccionarMedico": "Seleccione el médico (opcional)",
+      "cualquierMedico": "Cualquier médico disponible",
+      "motivoConsulta": "Motivo de consulta",
+      "motivoPlaceholder": "Describa brevemente el motivo de su consulta...",
+      "sinHorarios": "No hay horarios disponibles para la fecha seleccionada",
+      "listaEspera": "Agregar a lista de espera",
+      "comprobante": "Comprobante de Cita",
+      "confirmar": "Confirmar Cita",
+      "exito": "¡Su cita ha sido confirmada!",
+      "exitoDetalle": "Recibirá una confirmación por correo electrónico."
+    }
+  },
+  "perfil": {
+    "titulo": "Mi Perfil",
+    "nivelCuenta": "Nivel de Cuenta",
+    "nivelBasico": "Básico",
+    "nivelCompleto": "Completo",
+    "verificarIdentidad": "Verificar mi identidad",
+    "pasos": {
+      "titulo": "¿Cómo obtener el nivel Completo?",
+      "paso1": "Acuda a cualquier establecimiento de salud público",
+      "paso2": "Solicite la validación de identidad en el área de admisión",
+      "paso3": "Presente su cédula de identidad",
+      "paso4": "Su cuenta será actualizada en 24-48 horas"
+    }
+  },
+  "historia": {
+    "titulo": "Mi Historia Clínica",
+    "soloNivelCompleto": "Esta sección solo está disponible para cuentas con identidad verificada.",
+    "accesos": {
+      "titulo": "Accesos a Mi Historia",
+      "descripcion": "Registro de quién ha accedido a su historia clínica",
+      "profesional": "Profesional",
+      "establecimiento": "Establecimiento",
+      "fecha": "Fecha y hora",
+      "tipo": "Tipo de acceso",
+      "motivo": "Motivo"
+    }
+  },
+  "dashboard": {
+    "saludo": "Bienvenido/a",
+    "proximaCita": "Próxima Cita",
+    "sinProximaCita": "No tiene citas próximas",
+    "accionesRapidas": "Acciones Rápidas",
+    "estadoCuenta": "Estado de su Cuenta",
+    "cuentaBasica": "Su cuenta es de nivel Básico. Valide su identidad para acceder a su historia clínica completa."
+  }
+}

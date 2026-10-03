@@ -1,0 +1,37 @@
+{
+  "http": {
+    "400": "Solicitud incorrecta. Verifique los datos ingresados.",
+    "401": "No autenticado. Por favor inicie sesión.",
+    "403": "Acceso denegado. No tiene permisos para realizar esta acción.",
+    "404": "El recurso solicitado no fue encontrado.",
+    "409": "Conflicto: el recurso ya existe.",
+    "422": "Los datos enviados no son válidos.",
+    "429": "Demasiadas solicitudes. Por favor espere un momento.",
+    "500": "Error interno del servidor. Por favor intente de nuevo.",
+    "503": "Servicio temporalmente no disponible."
+  },
+  "auth": {
+    "credencialesInvalidas": "Documento o contraseña incorrectos.",
+    "cuentaBloqueada": "Su cuenta ha sido bloqueada temporalmente. Intente de nuevo en {{minutos}} minutos.",
+    "mfaInvalido": "El código de verificación es incorrecto o ha expirado.",
+    "sesionExpirada": "Su sesión ha expirado. Por favor inicie sesión nuevamente.",
+    "documentoDuplicado": "Ya existe una cuenta registrada con este número de documento."
+  },
+  "validacion": {
+    "requerido": "Este campo es obligatorio.",
+    "minLength": "Debe tener al menos {{min}} caracteres.",
+    "maxLength": "No puede superar los {{max}} caracteres.",
+    "email": "Ingrese un correo electrónico válido.",
+    "telefono": "Ingrese un número de teléfono venezolano válido (ej: 0414-1234567).",
+    "documento": "Ingrese un número de documento válido.",
+    "contrasenaDebil": "La contraseña debe tener al menos 8 caracteres, una mayúscula y un número.",
+    "contrasenasNoCoinciden": "Las contraseñas no coinciden.",
+    "fechaInvalida": "Ingrese una fecha válida.",
+    "codigoMfa": "El código debe tener exactamente 6 dígitos."
+  },
+  "offline": {
+    "operacionEnCola": "Sin conexión: la operación se enviará cuando se restablezca la conexión.",
+    "sincronizacionFallida": "Algunas operaciones no pudieron sincronizarse. Intente de nuevo.",
+    "datosFueraDeLinea": "Está viendo datos que pueden no estar actualizados."
+  }
+}

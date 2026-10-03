@@ -1,0 +1,122 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# SNHCE — Nodo Local de Establecimiento (Relay de Sincronización)
+#
+# Este compose se despliega en cada hospital/CDI/ambulatorio.
+# NO tiene UI propia — solo actúa como relay de sincronización bidireccional.
+#
+# Arquitectura:
+#   [App Clínica (browser)] ──► [postgres-local + backend-local]
+#                                          │
+#                                    [Redis-local Queue]
+#                                          │
+#                               [Sync Worker] ──► [SNHCE Central]
+# ─────────────────────────────────────────────────────────────────────────────
+
+version: '3.9'
+
+services:
+
+  # ── Base de datos local del establecimiento ───────────────────────────────
+  postgres-local:
+    image: postgres:16-alpine
+    container_name: snhce_nodo_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${LOCAL_POSTGRES_DB:-snhce_local}
+      POSTGRES_USER: ${LOCAL_POSTGRES_USER:-snhce_local}
+      POSTGRES_PASSWORD: ${LOCAL_POSTGRES_PASSWORD:?Variable requerida}
+    volumes:
+      - postgres_local_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${LOCAL_POSTGRES_USER:-snhce_local}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # Puerto solo expuesto internamente en el nodo
+    ports:
+      - "127.0.0.1:5433:5432"
+
+  # ── Cola de sincronización local (Redis) ──────────────────────────────────
+  redis-local:
+    image: redis:7-alpine
+    container_name: snhce_nodo_redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --requirepass ${LOCAL_REDIS_PASSWORD:?Variable requerida}
+      --appendonly yes
+      --appendfilename "outbox.aof"
+    volumes:
+      - redis_local_data:/data
+    ports:
+      - "127.0.0.1:6380:6379"
+
+  # ── Backend del nodo local (NestJS en modo LOCAL_NODE) ────────────────────
+  backend-local:
+    image: ${BACKEND_IMAGE:-snhce-backend:latest}
+    container_name: snhce_nodo_backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      LOCAL_NODE: "true"                              # Activa módulos de sync únicamente
+      DATABASE_URL: postgresql://${LOCAL_POSTGRES_USER}:${LOCAL_POSTGRES_PASSWORD}@postgres-local:5432/${LOCAL_POSTGRES_DB}
+      REDIS_URL: redis://:${LOCAL_REDIS_PASSWORD}@redis-local:6379
+      # Endpoint del centro de datos central (SNHCE cloud)
+      CENTRAL_API_URL: ${CENTRAL_API_URL:?URL del centro de datos central requerida}
+      CENTRAL_API_KEY: ${CENTRAL_API_KEY:?API key del centro central requerida}
+      # Identificador único de este establecimiento
+      ESTABLECIMIENTO_ID: ${ESTABLECIMIENTO_ID:?ID del establecimiento requerido}
+      ESTABLECIMIENTO_NOMBRE: ${ESTABLECIMIENTO_NOMBRE:-Establecimiento Local}
+      # Clave de cifrado local (gestionada por Vault o HSM local)
+      ENCRYPTION_KEY_ID: ${ENCRYPTION_KEY_ID:-local-key-v1}
+      # Intervalo de sincronización en segundos (default: 30s)
+      SYNC_INTERVAL_SECONDS: ${SYNC_INTERVAL_SECONDS:-30}
+      BACKEND_PORT: 3001
+    ports:
+      - "127.0.0.1:3001:3001"    # Solo accesible desde localhost del establecimiento
+    depends_on:
+      postgres-local:
+        condition: service_healthy
+      redis-local:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── Worker de sincronización con el central ────────────────────────────────
+  sync-worker:
+    image: ${BACKEND_IMAGE:-snhce-backend:latest}
+    container_name: snhce_nodo_sync
+    restart: unless-stopped
+    command: ["node", "dist/sync-worker.js"]     # Punto de entrada dedicado al worker
+    environment:
+      NODE_ENV: production
+      LOCAL_NODE: "true"
+      SYNC_WORKER_ONLY: "true"
+      DATABASE_URL: postgresql://${LOCAL_POSTGRES_USER}:${LOCAL_POSTGRES_PASSWORD}@postgres-local:5432/${LOCAL_POSTGRES_DB}
+      REDIS_URL: redis://:${LOCAL_REDIS_PASSWORD}@redis-local:6379
+      CENTRAL_API_URL: ${CENTRAL_API_URL}
+      CENTRAL_API_KEY: ${CENTRAL_API_KEY}
+      ESTABLECIMIENTO_ID: ${ESTABLECIMIENTO_ID}
+      SYNC_INTERVAL_SECONDS: ${SYNC_INTERVAL_SECONDS:-30}
+      # Política de reintento: exponential backoff máx. 1 hora
+      SYNC_MAX_BACKOFF_SECONDS: ${SYNC_MAX_BACKOFF_SECONDS:-3600}
+    depends_on:
+      backend-local:
+        condition: service_healthy
+
+volumes:
+  postgres_local_data:
+    name: snhce_nodo_postgres_data
+  redis_local_data:
+    name: snhce_nodo_redis_data
+
+networks:
+  default:
+    name: snhce_nodo_network
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
