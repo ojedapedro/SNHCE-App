@@ -16,8 +16,13 @@ RUN pnpm install --frozen-lockfile
 # Generar cliente Prisma
 RUN pnpm prisma:generate
 
+# ===== Etapa de desarrollo (usada por Docker Compose) =====
+FROM deps AS development
+# En desarrollo montamos el código fuente como volumen, así que el CMD usa watch
+CMD ["pnpm", "start:dev"]
+
 # ===== Etapa 2: Compilación de la aplicación =====
-FROM node:20-alpine AS build
+FROM deps AS build
 
 RUN npm install -g pnpm@9
 
