@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
-import { Prisma } from '@prisma/client';
+
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 
 /**
@@ -46,14 +46,12 @@ const PRISMA_ERROR_MAP: Record<string, { status: number; message: string }> = {
  */
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
-  private readonly logger: Logger;
   private readonly isProduction: boolean;
 
   constructor(
     @Inject(WINSTON_MODULE_NEST_PROVIDER) private readonly winstonLogger: Logger,
     private readonly configService: ConfigService,
   ) {
-    this.logger = new Logger(HttpExceptionFilter.name);
     this.isProduction = this.configService.get<string>('NODE_ENV') === 'production';
   }
 
@@ -108,35 +106,41 @@ export class HttpExceptionFilter implements ExceptionFilter {
     message: string | string[];
     error: string;
   } {
-    // 1. Errores conocidos de Prisma
-    if (exception instanceof Prisma.PrismaClientKnownRequestError) {
-      const mapped = PRISMA_ERROR_MAP[exception.code];
-      if (mapped) {
+    // Verificar si es un error de Prisma usando duck-typing (nombre del constructor)
+    if (typeof exception === 'object' && exception !== null) {
+      const err = exception as any;
+      const constructorName = err.constructor?.name || '';
+      
+      // 1. Errores conocidos de Prisma
+      if (constructorName === 'PrismaClientKnownRequestError') {
+        const mapped = PRISMA_ERROR_MAP[err.code];
+        if (mapped) {
+          return {
+            statusCode: mapped.status,
+            message: mapped.message,
+            error: `PrismaError_${err.code}`,
+          };
+        }
+        // Código Prisma desconocido — error interno genérico
         return {
-          statusCode: mapped.status,
-          message: mapped.message,
-          error: `PrismaError_${exception.code}`,
+          statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+          message: 'Error interno de base de datos',
+          error: 'DatabaseError',
         };
       }
-      // Código Prisma desconocido — error interno genérico
-      return {
-        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-        message: 'Error interno de base de datos',
-        error: 'DatabaseError',
-      };
-    }
 
-    // 2. Errores de validación/esquema de Prisma
-    if (
-      exception instanceof Prisma.PrismaClientValidationError ||
-      exception instanceof Prisma.PrismaClientRustPanicError ||
-      exception instanceof Prisma.PrismaClientInitializationError
-    ) {
-      return {
-        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-        message: 'Error interno del servidor',
-        error: 'DatabaseError',
-      };
+      // 2. Errores de validación/esquema de Prisma
+      if (
+        constructorName === 'PrismaClientValidationError' ||
+        constructorName === 'PrismaClientRustPanicError' ||
+        constructorName === 'PrismaClientInitializationError'
+      ) {
+        return {
+          statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+          message: 'Error interno del servidor',
+          error: 'DatabaseError',
+        };
+      }
     }
 
     // 3. Excepciones HTTP de NestJS (incluye BadRequestException con errores de validación)

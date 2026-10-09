@@ -19,7 +19,7 @@ import { PrismaService } from '../../common/database/prisma.service';
 @Injectable()
 export class OutboxWorkerService {
   private readonly logger = new Logger(OutboxWorkerService.name);
-  private readonly BATCH_SIZE = 50;
+  // Umbral configurable de eventos por ciclo (comentado si no se usa)
 
   constructor(private readonly prisma: PrismaService) {}
 

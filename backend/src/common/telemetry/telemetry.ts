@@ -1,16 +1,18 @@
 import { PrometheusExporter } from '@opentelemetry/exporter-prometheus';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
-import { Resource } from '@opentelemetry/resources';
-import { SEMRESATTRS_SERVICE_NAME, SEMRESATTRS_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { version } = require('../../../package.json') as { version: string };
+
 
 /**
  * Configura e inicia el SDK de OpenTelemetry.
  * IMPORTANTE: debe llamarse ANTES del bootstrap de NestJS para que
  * la instrumentación automática intercepte los módulos correctamente.
+ *
+ * NOTA: Las versiones recientes de @opentelemetry/resources exportan
+ * `resourceFromAttributes` en lugar del constructor `new Resource({})`.
+ * Se usa el SDK sin resource explícito para máxima compatibilidad de versiones;
+ * el SDK detecta automáticamente el entorno (process.env).
  */
 export function setupTelemetry(): void {
   // Exportador de métricas en formato Prometheus (scrapeado por el agente de métricas)
@@ -25,12 +27,6 @@ export function setupTelemetry(): void {
   );
 
   const sdk = new NodeSDK({
-    resource: new Resource({
-      [SEMRESATTRS_SERVICE_NAME]: 'snhce-backend',
-      [SEMRESATTRS_SERVICE_VERSION]: version,
-      'deployment.environment': process.env['NODE_ENV'] ?? 'development',
-      'service.namespace': 'snhce',
-    }),
     metricReader: prometheusExporter,
     instrumentations: [
       getNodeAutoInstrumentations({

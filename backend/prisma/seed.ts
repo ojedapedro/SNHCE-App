@@ -408,7 +408,7 @@ async function main() {
     const fechaEpisodio = new Date(hoy);
     fechaEpisodio.setDate(hoy.getDate() - (idx + 1) * 7); // Episodios en el pasado
 
-    const episodio = await prisma.episodio.create({
+    await prisma.episodio.create({
       data: {
         pacienteId: pacientesCreados[ed.pacienteIdx],
         establecimientoId: ests[ed.estIdx].id,

@@ -4,16 +4,14 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthGuard } from './components/AuthGuard';
 import { Spinner } from '@snhce/ui';
 
-const LoginClinica = lazy(() => import('./pages/LoginClinica'));
+// Páginas existentes
 const AgendaPage = lazy(() => import('./pages/AgendaPage'));
 const BuscarPacientePage = lazy(() => import('./pages/BuscarPacientePage'));
 const ResumenClinicoPage = lazy(() => import('./pages/ResumenClinicoPage'));
 const NuevaConsultaPage = lazy(() => import('./pages/NuevaConsultaPage'));
-const PrescripcionPage = lazy(() => import('./pages/PrescripcionPage'));
-const ReposoPage = lazy(() => import('./pages/ReposoPage'));
-const OrdenesPage = lazy(() => import('./pages/OrdenesPage'));
-const HistorialEpisodiosPage = lazy(() => import('./pages/HistorialEpisodiosPage'));
-const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
+const NuevaPrescripcionPage = lazy(() => import('./pages/NuevaPrescripcionPage'));
+const NuevoReposoPage = lazy(() => import('./pages/NuevoReposoPage'));
+const TableroCronicosPage = lazy(() => import('./pages/TableroCronicosPage'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -39,26 +37,18 @@ export function App() {
       <BrowserRouter>
         <Suspense fallback={<LoadingFallback />}>
           <Routes>
-            <Route path="/login" element={<LoginClinica />} />
-
-            {/* Rutas protegidas para personal médico y de enfermería */}
             <Route element={<AuthGuard rolesPermitidos={['MEDICO', 'ENFERMERIA']} />}>
-              {/* Agenda del día — pantalla principal */}
               <Route path="/" element={<AgendaPage />} />
-
-              {/* Búsqueda — siempre por POST (documento nunca en URL) */}
               <Route path="/paciente/buscar" element={<BuscarPacientePage />} />
-
-              {/* Historia del paciente — usar ID opaco de sesión, nunca UUID ni cédula */}
               <Route path="/paciente/:opaqueId/resumen" element={<ResumenClinicoPage />} />
               <Route path="/paciente/:opaqueId/nueva-consulta" element={<NuevaConsultaPage />} />
-              <Route path="/paciente/:opaqueId/prescripcion" element={<PrescripcionPage />} />
-              <Route path="/paciente/:opaqueId/reposo" element={<ReposoPage />} />
-              <Route path="/paciente/:opaqueId/ordenes" element={<OrdenesPage />} />
-              <Route path="/paciente/:opaqueId/historial" element={<HistorialEpisodiosPage />} />
+              <Route path="/paciente/:opaqueId/prescripcion" element={<NuevaPrescripcionPage />} />
+              <Route path="/paciente/:opaqueId/reposo" element={<NuevoReposoPage />} />
+              <Route path="/cronicos" element={<TableroCronicosPage />} />
             </Route>
 
-            <Route path="*" element={<NotFoundPage />} />
+            {/* Fallback general */}
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
       </BrowserRouter>

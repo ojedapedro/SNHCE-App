@@ -48,7 +48,7 @@ export class CitasService {
       metadatos: { fecha: fechaLocal },
     });
 
-    return citas.map(cita => ({
+    return citas.map((cita: { id: string; fechaHora: Date; estado: string; especialidad: string; paciente: { id: string; nombresCifrado: string; apellidosCifrado: string } }) => ({
       id: cita.id,
       fechaHora: cita.fechaHora,
       estado: cita.estado,

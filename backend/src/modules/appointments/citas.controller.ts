@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Query, Request, UseGuards, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, Request, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { CitasService } from './citas.service';

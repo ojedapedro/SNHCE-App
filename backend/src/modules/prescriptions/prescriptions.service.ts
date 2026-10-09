@@ -27,7 +27,7 @@ export class PrescriptionsService {
       where: { pacienteId: params.pacienteId, tipo: 'ALERGIA', activa: true }
     });
 
-    const tieneAlergia = alergias.some(a => 
+    const tieneAlergia = alergias.some((a: { agente: string }) =>
       params.nombreMedicamento.toLowerCase().includes(a.agente.toLowerCase()) ||
       a.agente.toLowerCase().includes(params.nombreMedicamento.toLowerCase())
     );

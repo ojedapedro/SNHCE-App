@@ -34,7 +34,7 @@ export class HealthController {
   @ApiOperation({ summary: 'Readiness probe — verifica DB, Redis, MinIO' })
   @ApiResponse({ status: 200, description: 'Todas las dependencias disponibles' })
   @ApiResponse({ status: 503, description: 'Una o más dependencias no disponibles' })
-  async getReadiness(): Promise<Record<string, unknown>> {
+  async getReadiness() {
     return this.healthService.checkReadiness();
   }
 

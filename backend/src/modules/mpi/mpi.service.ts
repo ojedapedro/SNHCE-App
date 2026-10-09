@@ -265,7 +265,8 @@ export class MpiService {
       throw new BadRequestException('El registro origen y destino deben ser diferentes.');
     }
 
-    await this.prisma.$transaction(async (tx) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await this.prisma.$transaction(async (tx: any) => {
       // Mover identificadores al destino
       await tx.identificadorPaciente.updateMany({
         where: { pacienteId: params.origenId },

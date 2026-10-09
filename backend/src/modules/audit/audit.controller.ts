@@ -2,7 +2,6 @@ import {
   Controller,
   Get,
   Query,
-  UseGuards,
   Request,
   ForbiddenException,
 } from '@nestjs/common';

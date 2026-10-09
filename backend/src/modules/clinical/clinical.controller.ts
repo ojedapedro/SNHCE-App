@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Param, Request, UseGuards, UseInterceptors } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
-import { CacheInterceptor, CacheKey, CacheTTL } from '@nestjs/cache-manager';
+import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import { ClinicalService } from './clinical.service';
 import { Roles, RequiereRelacionAsistencial } from '../../common/auth/decorators';
 import { RelacionAsistencialGuard } from '../../common/auth/relacion-asistencial.guard';

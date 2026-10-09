@@ -1,22 +1,28 @@
 import { Injectable, OnModuleDestroy, OnModuleInit, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { Prisma, PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 
 /**
  * Servicio Prisma — envuelve PrismaClient con:
  * - Conexión/desconexión gestionada por el ciclo de vida del módulo NestJS
  * - Middleware de logging de queries (solo en desarrollo)
  * - Extensiones futuras: soft-delete global, auditoría automática
+ *
+ * NOTA: En Prisma v5, los tipos de eventos (QueryEvent, LogEvent) se exponen
+ * como `any` al llamar $on. Se tipan inline para evitar breaking changes futuros.
  */
 @Injectable()
 export class PrismaService
-  extends PrismaClient<Prisma.PrismaClientOptions, 'query' | 'error' | 'warn' | 'info'>
+  extends PrismaClient<
+    { log: { emit: 'event'; level: 'query' | 'error' | 'warn' | 'info' }[] },
+    'query' | 'error' | 'warn' | 'info'
+  >
   implements OnModuleInit, OnModuleDestroy
 {
   private readonly logger = new Logger(PrismaService.name);
+  private readonly isDev: boolean;
 
-  constructor(private readonly configService: ConfigService) {
-    const nodeEnv = configService.get<string>('NODE_ENV', 'development');
+  constructor() {
+    const nodeEnv = process.env['NODE_ENV'] ?? 'development';
     const isDev = nodeEnv !== 'production';
 
     super({
@@ -30,38 +36,31 @@ export class PrismaService
       errorFormat: 'minimal',
     });
 
-    // Middleware de logging de queries en desarrollo
-    if (isDev) {
-      // Los eventos de query incluyen: query, params, duration, target
-      this.$on('query', (event: Prisma.QueryEvent) => {
+    this.isDev = isDev;
+  }
+
+  async onModuleInit(): Promise<void> {
+    if (this.isDev) {
+      // Prisma v5: los eventos son tipados como `any` por la librería
+      (this as any).$on('query', (event: { query: string; params: string; duration: number }) => {
         this.logger.debug(
           `[Prisma Query] ${event.query} | Params: ${event.params} | Duración: ${event.duration}ms`,
         );
       });
     }
 
-    this.$on('error', (event: Prisma.LogEvent) => {
+    (this as any).$on('error', (event: { message: string; target: string }) => {
       this.logger.error(`[Prisma Error] ${event.message}`, event.target);
     });
 
-    this.$on('warn', (event: Prisma.LogEvent) => {
+    (this as any).$on('warn', (event: { message: string; target: string }) => {
       this.logger.warn(`[Prisma Warn] ${event.message}`, event.target);
     });
-  }
 
-  /**
-   * Conectar a la base de datos al inicializar el módulo.
-   * NestJS llama esto automáticamente durante el arranque.
-   */
-  async onModuleInit(): Promise<void> {
     await this.$connect();
     this.logger.log('Conexión a PostgreSQL establecida vía Prisma');
   }
 
-  /**
-   * Desconectar limpiamente al destruir el módulo.
-   * NestJS llama esto durante el apagado graceful.
-   */
   async onModuleDestroy(): Promise<void> {
     await this.$disconnect();
     this.logger.log('Conexión a PostgreSQL cerrada limpiamente');

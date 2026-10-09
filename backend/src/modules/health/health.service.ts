@@ -12,7 +12,7 @@ interface DependencyStatus {
   error?: string;
 }
 
-interface ReadinessResult {
+export interface ReadinessResult {
   status: 'ok' | 'degraded' | 'error';
   timestamp: string;
   version: string;

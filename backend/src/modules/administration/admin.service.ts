@@ -160,7 +160,7 @@ export class AdminService {
       having: { usuarioId: { _count: { gt: 30 } } }, // Umbral: >30 historias en 1 hora es anómalo
     });
 
-    return accesos.map(a => ({
+    return accesos.map((a: { usuarioId: string; _count: { usuarioId: number } }) => ({
       usuarioId: a.usuarioId,
       accesosClinicos: a._count.usuarioId,
       alerta: `Usuario consultó ${a._count.usuarioId} historias clínicas en < 1 hora. Revisar.`,
@@ -192,7 +192,7 @@ export class AdminService {
       totalPacientesRegistrados: totalPacientes,
       totalCitasUltimoMes: totalCitas,
       totalEpisodiosUltimoMes: totalEpisodios,
-      top10PatologiasCie10: diagnosticosFrecuentes.map(d => ({
+      top10PatologiasCie10: diagnosticosFrecuentes.map((d: { codigoCie10: string; descripcion: string; _count: { codigoCie10: number } }) => ({
         codigo: d.codigoCie10,
         descripcion: d.descripcion,
         casos: d._count.codigoCie10,

@@ -12,16 +12,14 @@
 
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../common/database/prisma.service';
-
-// Tipos FHIR R4 simplificados (en prod usar @medplum/fhirtypes)
-interface FhirResource { resourceType: string; id: string; meta?: { profile?: string[] } }
-interface FhirPatient extends FhirResource { identifier: any[]; name: any[]; birthDate?: string; gender?: string }
-interface FhirEncounter extends FhirResource { status: string; class: any; subject: any; period?: any; participant?: any[] }
-interface FhirCondition extends FhirResource { clinicalStatus: any; code: any; subject: any; recordedDate?: string }
-interface FhirAllergyIntolerance extends FhirResource { clinicalStatus: any; code: any; patient: any; reaction?: any[] }
-interface FhirMedicationRequest extends FhirResource { status: string; intent: string; medication: any; subject: any; dosageInstruction?: any[] }
-interface FhirObservation extends FhirResource { status: string; code: any; subject: any; valueQuantity?: any; effectiveDateTime?: string }
-interface FhirAppointment extends FhirResource { status: string; specialty?: any[]; start?: string; participant: any[] }
+import {
+  FhirPatient,
+  FhirEncounter,
+  FhirCondition,
+  FhirAllergyIntolerance,
+  FhirMedicationRequest,
+  FhirAppointment,
+} from './fhir.types';
 
 @Injectable()
 export class FhirMapperService {
@@ -41,7 +39,7 @@ export class FhirMapperService {
       id: pacienteId,
       meta: { profile: ['http://hl7.org/fhir/StructureDefinition/Patient'] },
       // Identificadores internos — la cédula nunca va en el id de la URL
-      identifier: p.identificadores.map(ident => ({
+      identifier: p.identificadores.map((ident: { tipo: string; valorHash: string }) => ({
         use: 'official',
         system: this.systemForTipo(ident.tipo),
         value: '[cifrado — no expuesto en FHIR]', // Valor nunca se expone en texto claro
@@ -86,7 +84,7 @@ export class FhirMapperService {
   async getConditionsForEpisodio(episodioId: string): Promise<FhirCondition[]> {
     const diagnosticos = await this.prisma.diagnostico.findMany({ where: { episodioId } });
 
-    return diagnosticos.map(dx => ({
+    return diagnosticos.map((dx: { id: string; estadoDx: string; codigoCie10: string; descripcion: string; creadoEn: Date }) => ({
       resourceType: 'Condition',
       id: dx.id,
       clinicalStatus: {
@@ -113,7 +111,7 @@ export class FhirMapperService {
       where: { pacienteId, tipo: 'ALERGIA', activa: true }
     });
 
-    return alergias.map(al => ({
+    return alergias.map((al: { id: string; activa: boolean; codigoSnomed: string | null; descripcion: string; reaccion: string | null; severidad: string | null }) => ({
       resourceType: 'AllergyIntolerance',
       id: al.id,
       clinicalStatus: {
@@ -132,7 +130,7 @@ export class FhirMapperService {
   async getMedicationRequests(episodioId: string): Promise<FhirMedicationRequest[]> {
     const prescripciones = await this.prisma.prescripcion.findMany({ where: { episodioId } });
 
-    return prescripciones.map(rx => ({
+    return prescripciones.map((rx: { id: string; estado: string; rxnormCui: string | null; nombreMedicamento: string; dosis: string; via: string; frecuencia: string }) => ({
       resourceType: 'MedicationRequest',
       id: rx.id,
       status: rx.estado === 'ACTIVA' ? 'active' : rx.estado === 'CANCELADA' ? 'cancelled' : 'completed',

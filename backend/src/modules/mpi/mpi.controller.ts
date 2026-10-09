@@ -13,7 +13,6 @@ import {
   ApiTags,
   ApiOperation,
   ApiBearerAuth,
-  ApiBody,
 } from '@nestjs/swagger';
 import { IsString, IsNotEmpty, IsIn } from 'class-validator';
 import { MpiService } from './mpi.service';
@@ -21,17 +20,17 @@ import { Roles } from '../../common/auth/decorators';
 
 class BuscarPacienteDto {
   @IsIn(['CEDULA_VE', 'RNE', 'PASAPORTE', 'CEDULA_MADRE_HIJO', 'PROVISIONAL'])
-  tipo: string;
+  tipo!: string;
 
   @IsString()
   @IsNotEmpty()
-  valor: string;
+  valor!: string;
 }
 
 class ValidarPresencialDto {
   @IsString()
   @IsNotEmpty()
-  pacienteId: string;
+  pacienteId!: string;
 }
 
 /**
