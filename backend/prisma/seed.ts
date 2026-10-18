@@ -157,7 +157,6 @@ async function main() {
           codigoMPPS: e.codigoMPPS,
           latitud: e.latitud,
           longitud: e.longitud,
-          creadoPor: 'SEED',
         },
       }),
     ),
@@ -168,10 +167,10 @@ async function main() {
   console.log('📅 Creando agendas...');
   await prisma.agenda.createMany({
     data: [
-      { establecimientoId: ests[0].id, especialidad: 'Medicina Interna', diaSemana: 1, horaInicio: '07:30', horaFin: '12:00', duracionCitaMin: 20, cuposMaximos: 14, creadoPor: 'SEED' },
-      { establecimientoId: ests[0].id, especialidad: 'Medicina Interna', diaSemana: 3, horaInicio: '07:30', horaFin: '12:00', duracionCitaMin: 20, cuposMaximos: 14, creadoPor: 'SEED' },
-      { establecimientoId: ests[1].id, especialidad: 'Pediatría', diaSemana: 2, horaInicio: '08:00', horaFin: '12:00', duracionCitaMin: 20, cuposMaximos: 12, creadoPor: 'SEED' },
-      { establecimientoId: ests[2].id, especialidad: 'Ginecología', diaSemana: 4, horaInicio: '08:00', horaFin: '13:00', duracionCitaMin: 30, cuposMaximos: 10, creadoPor: 'SEED' },
+      { establecimientoId: ests[0].id, especialidad: 'Medicina Interna', diaSemana: 1, horaInicio: '07:30', horaFin: '12:00', duracionCitaMin: 20, cuposMaximos: 14 },
+      { establecimientoId: ests[0].id, especialidad: 'Medicina Interna', diaSemana: 3, horaInicio: '07:30', horaFin: '12:00', duracionCitaMin: 20, cuposMaximos: 14 },
+      { establecimientoId: ests[1].id, especialidad: 'Pediatría', diaSemana: 2, horaInicio: '08:00', horaFin: '12:00', duracionCitaMin: 20, cuposMaximos: 12 },
+      { establecimientoId: ests[2].id, especialidad: 'Ginecología', diaSemana: 4, horaInicio: '08:00', horaFin: '13:00', duracionCitaMin: 30, cuposMaximos: 10 },
     ],
   });
   console.log('   ✅ Agendas creadas');
@@ -188,7 +187,7 @@ async function main() {
     const rolUsuario = rolMap[p.tipo] || 'ADMINISTRATIVO';
     const personal = await prisma.personalSalud.create({
       data: {
-        tipo: p.tipo,
+        tipoPersonal: p.tipo as any,
         nroColegiado: p.nroColegiado,
         especialidad: p.especialidad,
         establecimientoId: ests[p.estIdx].id,
@@ -446,7 +445,6 @@ async function main() {
               frecuencia: ed.frecuencia,
               duracionDias: ed.duracion,
               instrucciones: 'Tomar con alimentos. No suspender sin consultar al médico.',
-              codigoVerificacion: `RX-${Date.now()}-${idx}`,
               creadoPor: medicoPersonal.id,
             },
           ],
