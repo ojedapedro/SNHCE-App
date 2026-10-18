@@ -1,0 +1,54 @@
+# ============================================================
+# .dockerignore — excluye del contexto Docker todo lo que
+# NO necesita el backend para compilarse.
+# Contexto usado: raíz del monorepo (context: .)
+# ============================================================
+
+# Frontend apps (no son parte del backend)
+apps/
+
+# Paquetes compartidos (el backend no los necesita en tiempo de build Docker)
+packages/
+
+# node_modules locales (se instalan dentro del contenedor)
+node_modules/
+backend/node_modules/
+
+# Archivos de cobertura y build local
+**/coverage/
+**/dist/
+**/.turbo/
+
+# Archivos de entorno secretos
+.env
+.env.*
+!.env.example
+
+# Archivos de test
+**/test/
+**/*.spec.ts
+**/*.e2e-spec.ts
+
+# Logs
+**/logs/
+**/*.log
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Docker (evitar recursión)
+**/Dockerfile*
+**/.dockerignore
+
+# Turborepo cache
+.turbo/
+
+# macOS
+.DS_Store

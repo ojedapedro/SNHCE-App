@@ -1,85 +1,111 @@
+# ============================================================
+# Dockerfile del backend SNHCE
+# IMPORTANTE: El build context debe ser la RAÍZ del monorepo,
+# no el directorio backend/. Esto es necesario porque pnpm
+# workspace gestiona el pnpm-lock.yaml en la raíz.
+#
+# Uso en CI:
+#   context: .
+#   file: ./backend/Dockerfile
+# ============================================================
+
 # ===== Etapa 1: Instalación de dependencias =====
 FROM node:20-alpine AS deps
 
-# Instalar pnpm globalmente
-RUN npm install -g pnpm@9
+# Usar corepack para gestionar pnpm (más limpio que npm install -g)
+RUN corepack enable && corepack prepare pnpm@9.4.0 --activate
 
 WORKDIR /app
 
-# Copiar archivos de manifiesto de dependencias
-COPY package.json pnpm-lock.yaml* ./
-COPY prisma ./prisma/
+# --- Copiar los manifiestos del workspace primero (mejor cache de capas) ---
+# Necesitamos el lockfile de la RAÍZ y todos los package.json del workspace
+# para que pnpm resuelva correctamente las dependencias.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
-# Instalar todas las dependencias (prod + dev para poder compilar)
-RUN pnpm install --frozen-lockfile
+# Copiar package.json de cada workspace member (necesario para resolución de deps)
+COPY backend/package.json ./backend/
+# Apps y packages — solo el package.json, no el código fuente
+COPY packages/ui/package.json ./packages/ui/
+COPY packages/i18n/package.json ./packages/i18n/
 
-# Generar cliente Prisma
+# Verificar si existen los package.json de apps (pueden no existir en builds tempranos)
+COPY apps/portal-paciente/package.json ./apps/portal-paciente/
+COPY apps/app-clinica/package.json ./apps/app-clinica/
+COPY apps/consola-administrativa/package.json ./apps/consola-administrativa/
+
+# Copiar el schema Prisma (necesario antes de generate)
+COPY backend/prisma ./backend/prisma/
+
+# Instalar SOLO las dependencias del backend (y sus workspace deps)
+# --filter evita instalar deps de apps frontend
+RUN pnpm install --frozen-lockfile --filter=snhce-backend...
+
+# Generar el cliente Prisma
+WORKDIR /app/backend
 RUN pnpm prisma:generate
 
-# ===== Etapa de desarrollo (usada por Docker Compose) =====
+# ===== Etapa de desarrollo (usada por Docker Compose local) =====
 FROM deps AS development
-# En desarrollo montamos el código fuente como volumen, así que el CMD usa watch
-CMD ["pnpm", "start:dev"]
+WORKDIR /app
+CMD ["pnpm", "--filter=snhce-backend", "start:dev"]
 
-# ===== Etapa 2: Compilación de la aplicación =====
+# ===== Etapa 2: Compilación TypeScript =====
 FROM deps AS build
 
 WORKDIR /app
 
-# Copiar dependencias instaladas y el cliente Prisma generado desde la etapa anterior
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/prisma ./prisma
+# Copiar el código fuente del backend
+COPY backend/src ./backend/src
+COPY backend/tsconfig.json backend/tsconfig.build.json backend/nest-cli.json ./backend/
 
-# Copiar el código fuente
-COPY . .
-
-# Compilar TypeScript a JavaScript
+# Compilar (nest build usa tsconfig.build.json que excluye seed.ts y specs)
+WORKDIR /app/backend
 RUN pnpm build
 
-# ===== Etapa 3: Imagen de producción (lean image) =====
-# Copiamos node_modules completo desde deps para evitar
-# reinstalación dentro del build context del backend
-# (el pnpm-lock.yaml raíz no está disponible aquí).
+# ===== Etapa 3: Imagen de producción (minimal) =====
 FROM node:20-alpine AS production
 
-# Metadatos de la imagen
 LABEL maintainer="MPPS Venezuela <stic@mpps.gob.ve>"
 LABEL description="SNHCE Backend - Sistema Nacional de Historias Clínicas Electrónicas"
 LABEL version="1.0.0"
 
-# Instalar dependencias de sistema necesarias para runtime
-# dumb-init: manejo correcto de señales PID 1
-# curl: para health checks
+# dumb-init: correcto manejo de señales como PID 1 en contenedor
+# curl: requerido por HEALTHCHECK
 RUN apk add --no-cache dumb-init curl && \
     rm -rf /var/cache/apk/*
 
 WORKDIR /app
 
-# Copiar package.json para metadata
+# Copiar package.json de la raíz (requerido por pnpm para resolver paths)
 COPY package.json ./
 
-# Copiar node_modules y cliente Prisma generado desde la etapa de deps
+# Copiar node_modules ya instalados desde deps (prod + prisma client)
+# Los node_modules de la raíz contienen las dependencias hoisted de pnpm
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/prisma ./prisma
 
-# Copiar artefactos compilados
-COPY --from=build /app/dist ./dist
+# Copiar node_modules del backend (dependencias específicas del workspace)
+COPY --from=deps /app/backend/node_modules ./backend/node_modules
 
-# Crear directorio de logs con permisos correctos
-RUN mkdir -p /app/logs && chown -R node:node /app/logs /app/dist
+# Copiar el cliente Prisma generado y el schema
+COPY --from=deps /app/backend/prisma ./backend/prisma
 
-# Ejecutar como usuario no-root por seguridad
+# Copiar el código compilado
+COPY --from=build /app/backend/dist ./backend/dist
+
+# Ajustar permisos del directorio de logs
+RUN mkdir -p /app/logs && chown -R node:node /app/logs /app/backend/dist
+
+# Ejecutar como usuario no-root (seguridad)
 USER node
 
-# Exponer el puerto de la aplicación
 EXPOSE 3000
 
-# Health check de Docker
+# Health check: verifica que el proceso esté respondiendo
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
   CMD curl -f http://localhost:3000/api/v1/health/live || exit 1
 
-# Usar dumb-init como PID 1 para manejo correcto de señales SIGTERM/SIGINT
+# dumb-init como PID 1 para SIGTERM correcto al escalar/reiniciar
 ENTRYPOINT ["dumb-init", "--"]
 
-# Comando de inicio
-CMD ["node", "dist/main"]
+# Ejecutar desde la ruta correcta donde están los dist compilados
+CMD ["node", "backend/dist/main"]
