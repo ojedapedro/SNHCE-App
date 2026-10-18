@@ -13,6 +13,8 @@ const config: Config = {
     '^@prisma/(.*)$': '<rootDir>/src/$1',
   },
   testEnvironment: 'node',
+  // testPathIgnorePatterns se aplica a todos los proyectos
+  testPathIgnorePatterns: ['/node_modules/'],
   projects: [
     {
       displayName: 'unit',
@@ -26,6 +28,7 @@ const config: Config = {
         '^@modules/(.*)$': '<rootDir>/src/modules/$1',
       },
       testEnvironment: 'node',
+      moduleFileExtensions: ['js', 'json', 'ts'],
     },
     {
       displayName: 'integration',
@@ -36,6 +39,7 @@ const config: Config = {
         '^@modules/(.*)$': '<rootDir>/src/modules/$1',
       },
       testEnvironment: 'node',
+      moduleFileExtensions: ['js', 'json', 'ts'],
     },
     {
       displayName: 'authorization',
@@ -46,6 +50,7 @@ const config: Config = {
         '^@modules/(.*)$': '<rootDir>/src/modules/$1',
       },
       testEnvironment: 'node',
+      moduleFileExtensions: ['js', 'json', 'ts'],
     },
   ],
   collectCoverageFrom: [
@@ -55,8 +60,7 @@ const config: Config = {
     '!src/main.ts',
     '!src/common/telemetry/**',
   ],
-  // Umbrales globales y por módulo crítico
-  coverageThresholds: {
+  coverageThreshold: {
     global: {
       branches: 70,
       functions: 70,

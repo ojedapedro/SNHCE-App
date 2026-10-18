@@ -143,7 +143,9 @@ export async function obtenerPendientes(): Promise<OperacionOffline[]> {
     const tx = db.transaction(STORES.OUTBOX, 'readonly');
     const index = tx.objectStore(STORES.OUTBOX).index('status');
     const req = index.getAll(IDBKeyRange.only('PENDIENTE'));
-    req.onsuccess = () => resolve(req.result);
+    req.onsuccess = () =>
+      // Ordenar por timestamp ascendente para garantizar semántica FIFO
+      resolve(req.result.sort((a, b) => a.timestamp - b.timestamp));
     req.onerror = () => reject(req.error);
   });
 }

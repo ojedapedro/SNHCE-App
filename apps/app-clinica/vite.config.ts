@@ -24,4 +24,11 @@ export default defineConfig({
       },
     },
   },
+  test: {
+    // jsdom provee WebCrypto, crypto, navigator, etc.
+    environment: 'jsdom',
+    globals: true,
+    // Inyecta fake-indexeddb antes de cada suite
+    setupFiles: ['./src/tests/setup.ts'],
+  },
 });

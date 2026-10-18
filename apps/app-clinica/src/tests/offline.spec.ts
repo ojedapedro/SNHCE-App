@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { agregarAOutbox, obtenerPendientes, marcarSincronizado, limpiarDatosOffline, initCryptoKey } from '../src/lib/offlineStore';
+import { agregarAOutbox, obtenerPendientes, marcarSincronizado, limpiarDatosOffline, initCryptoKey } from '../lib/offlineStore';
 
 // Mock de crypto.subtle en jsdom
 const mockKey = {} as CryptoKey;
