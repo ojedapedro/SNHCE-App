@@ -33,7 +33,6 @@ export class PrismaService
             { emit: 'event', level: 'warn' },
           ]
         : [{ emit: 'event', level: 'error' }],
-      errorFormat: 'minimal',
     });
 
     this.isDev = isDev;

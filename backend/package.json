@@ -14,7 +14,7 @@
     "type-check": "tsc --noEmit",
     "test": "jest --selectProjects unit",
     "test:watch": "jest --watch",
-    "test:cov": "jest --coverage",
+    "test:cov": "jest --selectProjects unit --coverage",
     "test:integration": "jest --testPathPattern=test/integration --passWithNoTests",
     "test:authorization": "jest src/common/auth/roles.spec.ts",
     "test:all": "jest",

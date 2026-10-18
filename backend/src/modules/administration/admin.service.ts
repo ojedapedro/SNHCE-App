@@ -122,7 +122,7 @@ export class AdminService {
         recurso: registro.recurso,
         creadoEn: registro.creadoEn.toISOString(),
       });
-      const hashEsperado = crypto
+      const hashEsperado: string = crypto
         .createHash('sha256')
         .update(payload + (hashAnterior || ''))
         .digest('hex');

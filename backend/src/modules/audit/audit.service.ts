@@ -73,7 +73,7 @@ export class AuditService implements OnModuleInit {
         ipDireccion: params.ipDireccion,
         userAgent: params.userAgent,
         justificacion: params.justificacion,
-        metadatos: params.metadatos ?? {},
+        metadatos: (params.metadatos ?? {}) as any,
       },
     });
 
@@ -125,9 +125,9 @@ export class AuditService implements OnModuleInit {
         timestamp: registro.creadoEn.toISOString(),
       };
 
-      const contenidoParaHash =
+      const contenidoParaHash: string =
         JSON.stringify(payload) + (hashAnteriorEsperado ?? 'GENESIS');
-      const hashCalculado = crypto
+      const hashCalculado: string = crypto
         .createHash('sha256')
         .update(contenidoParaHash)
         .digest('hex');
