@@ -10,7 +10,7 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml* ./
 COPY prisma ./prisma/
 
-# Instalar dependencias con lockfile congelado para reproducibilidad
+# Instalar todas las dependencias (prod + dev para poder compilar)
 RUN pnpm install --frozen-lockfile
 
 # Generar cliente Prisma
@@ -24,11 +24,9 @@ CMD ["pnpm", "start:dev"]
 # ===== Etapa 2: Compilación de la aplicación =====
 FROM deps AS build
 
-RUN npm install -g pnpm@9
-
 WORKDIR /app
 
-# Copiar dependencias instaladas desde la etapa anterior
+# Copiar dependencias instaladas y el cliente Prisma generado desde la etapa anterior
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/prisma ./prisma
 
@@ -38,7 +36,10 @@ COPY . .
 # Compilar TypeScript a JavaScript
 RUN pnpm build
 
-# ===== Etapa 3: Imagen de producción =====
+# ===== Etapa 3: Imagen de producción (lean image) =====
+# Copiamos node_modules completo desde deps para evitar
+# reinstalación dentro del build context del backend
+# (el pnpm-lock.yaml raíz no está disponible aquí).
 FROM node:20-alpine AS production
 
 # Metadatos de la imagen
@@ -54,23 +55,18 @@ RUN apk add --no-cache dumb-init curl && \
 
 WORKDIR /app
 
-# Instalar pnpm para instalar solo dependencias de producción
-RUN npm install -g pnpm@9
+# Copiar package.json para metadata
+COPY package.json ./
 
-# Copiar package.json para instalar solo prod deps
-COPY package.json pnpm-lock.yaml* ./
-COPY prisma ./prisma/
-
-# Instalar SOLO dependencias de producción
-RUN pnpm install --frozen-lockfile --prod && \
-    pnpm prisma:generate && \
-    pnpm store prune
+# Copiar node_modules y cliente Prisma generado desde la etapa de deps
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/prisma ./prisma
 
 # Copiar artefactos compilados
 COPY --from=build /app/dist ./dist
 
 # Crear directorio de logs con permisos correctos
-RUN mkdir -p /app/logs && chown -R node:node /app/logs
+RUN mkdir -p /app/logs && chown -R node:node /app/logs /app/dist
 
 # Ejecutar como usuario no-root por seguridad
 USER node
