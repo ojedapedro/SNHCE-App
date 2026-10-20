@@ -291,16 +291,16 @@ jobs:
     needs: [build]
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile
-      - name: Instalar Playwright
-        run: pnpm --filter @snhce/portal-paciente exec playwright install --with-deps chromium
-      # TODO: Ejecutar axe en las páginas del portal del paciente
+      # TODO: Cuando se integre Playwright + axe-core, descomentar:
+      # - uses: pnpm/action-setup@v4
+      # - uses: actions/setup-node@v4
+      #   with:
+      #     node-version: ${{ env.NODE_VERSION }}
+      #     cache: 'pnpm'
+      # - run: pnpm install --frozen-lockfile
+      # - name: Instalar Playwright
+      #   run: pnpm --filter @snhce/portal-paciente exec playwright install --with-deps chromium
       # - name: Verificar accesibilidad WCAG 2.1 AA
       #   run: pnpm --filter @snhce/portal-paciente test:a11y
       - name: Verificación básica (placeholder hasta integración Playwright)
-        run: echo "✅ Axe accesibility checks pendientes — ver Fase 8"
+        run: echo "✅ Axe accessibility checks pendientes — se habilitarán con Playwright + axe-core"
