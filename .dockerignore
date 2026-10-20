@@ -1,54 +1,71 @@
 # ============================================================
 # .dockerignore — excluye del contexto Docker todo lo que
 # NO necesita el backend para compilarse.
-# Contexto usado: raíz del monorepo (context: .)
+# Contexto: raíz del monorepo (context: .)
+#
+# REGLA CLAVE: pnpm workspace necesita los package.json de
+# TODOS los workspace members para resolver el grafo de deps,
+# incluso cuando se usa --filter. Por eso NO excluimos
+# apps/*/package.json ni packages/*/package.json.
+# Solo excluimos el código fuente y artefactos.
 # ============================================================
 
-# Frontend apps (no son parte del backend)
-apps/
+# --- Código fuente de apps frontend (NO necesario en build Docker) ---
+apps/*/src/
+apps/*/public/
+apps/*/dist/
+apps/*/node_modules/
+apps/*/.turbo/
+apps/*/coverage/
+apps/*/build/
 
-# Paquetes compartidos (el backend no los necesita en tiempo de build Docker)
-packages/
+# --- Código fuente de paquetes compartidos ---
+packages/*/src/
+packages/*/dist/
+packages/*/node_modules/
+packages/*/.turbo/
 
-# node_modules locales (se instalan dentro del contenedor)
+# --- node_modules raíz (se instalan dentro del contenedor) ---
 node_modules/
 backend/node_modules/
 
-# Archivos de cobertura y build local
+# --- Artefactos de build y cobertura ---
 **/coverage/
-**/dist/
 **/.turbo/
 
-# Archivos de entorno secretos
-.env
-.env.*
-!.env.example
+# --- Backend: dist local (se genera dentro del contenedor) ---
+backend/dist/
 
-# Archivos de test
-**/test/
-**/*.spec.ts
+# --- Archivos de entorno secretos ---
+.env
+.env.local
+.env.*.local
+
+# --- Archivos de test (no necesarios para compilar) ---
+backend/test/
 **/*.e2e-spec.ts
 
-# Logs
+# --- Logs ---
 **/logs/
 **/*.log
+npm-debug.log*
 
-# Git
+# --- Git ---
 .git/
 .gitignore
+.gitattributes
 
-# IDE
+# --- IDE / OS ---
 .vscode/
 .idea/
 *.swp
 *.swo
+.DS_Store
+Thumbs.db
 
-# Docker (evitar recursión)
-**/Dockerfile*
-**/.dockerignore
-
-# Turborepo cache
+# --- Turborepo cache ---
 .turbo/
 
-# macOS
-.DS_Store
+# --- Infraestructura (no necesaria para build del backend) ---
+infrastructure/
+docs/
