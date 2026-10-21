@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Card, Button, Badge } from '@snhce/ui';
 import { useQuery } from '@tanstack/react-query';
 

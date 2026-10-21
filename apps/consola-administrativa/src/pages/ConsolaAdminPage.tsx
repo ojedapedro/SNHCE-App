@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
-import { Card, Button, Badge, Input } from '@snhce/ui';
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { Card, Button, Badge } from '@snhce/ui';
 
 type TabId = 'usuarios' | 'duplicados' | 'auditoria' | 'emergencias' | 'anomalias' | 'indicadores';
 

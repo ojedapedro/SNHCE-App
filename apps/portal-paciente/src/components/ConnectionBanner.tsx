@@ -21,7 +21,7 @@ export function ConnectionBanner() {
 
   return (
     <div className="sticky top-0 z-50">
-      <ConnectionStatus isOnline={isOnline} />
+      <ConnectionStatus state={isOnline ? 'online' : 'offline'} />
     </div>
   );
 }

@@ -1,15 +1,15 @@
 /**
- * Tests de Autorización (RBAC/ABAC) — Modo autónomo
+ * Tests de AutorizaciÃ³n (RBAC/ABAC) â€” Modo autÃ³nomo
  *
- * Estos tests validan la LÓGICA de autorización de los guards sin levantar
- * la aplicación NestJS completa ni conectarse a la base de datos.
+ * Estos tests validan la LÃ“GICA de autorizaciÃ³n de los guards sin levantar
+ * la aplicaciÃ³n NestJS completa ni conectarse a la base de datos.
  * Los guards se prueban de forma unitaria mediante mocks del ExecutionContext.
  *
- * Para tests de integración completos (con Keycloak real) ver:
- *   test/integration/auth-integration.spec.ts  (pendiente — requiere Docker)
+ * Para tests de integraciÃ³n completos (con Keycloak real) ver:
+ *   test/integration/auth-integration.spec.ts  (pendiente â€” requiere Docker)
  */
 
-// ── Helpers ────────────────────────────────────────────────────────────────
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
  * Construye un mock de ExecutionContext con el usuario y headers indicados.
@@ -24,50 +24,50 @@ function buildContext(user: Record<string, unknown> | null, headers: Record<stri
   } as any;
 }
 
-// ── Pruebas de RBAC puras ──────────────────────────────────────────────────
+// â”€â”€ Pruebas de RBAC puras â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-describe('RBAC – Lógica de roles permitidos', () => {
+describe('RBAC â€“ LÃ³gica de roles permitidos', () => {
   /**
-   * Simula la lógica del RolesGuard: compara los roles del usuario
+   * Simula la lÃ³gica del RolesGuard: compara los roles del usuario
    * con los roles requeridos anotados con @Roles().
    */
   function checkRoles(userRoles: string[], requiredRoles: string[]): boolean {
     return requiredRoles.some((r) => userRoles.includes(r));
   }
 
-  it('MEDICO puede acceder a endpoint clínico', () => {
+  it('MEDICO puede acceder a endpoint clÃ­nico', () => {
     expect(checkRoles(['MEDICO'], ['MEDICO', 'ENFERMERIA'])).toBe(true);
   });
 
-  it('ADMINISTRATIVO no puede acceder a endpoint clínico', () => {
+  it('ADMINISTRATIVO no puede acceder a endpoint clÃ­nico', () => {
     expect(checkRoles(['ADMINISTRATIVO'], ['MEDICO', 'ENFERMERIA'])).toBe(false);
   });
 
-  it('AUDITOR puede acceder a logs de auditoría', () => {
+  it('AUDITOR puede acceder a logs de auditorÃ­a', () => {
     expect(checkRoles(['AUDITOR'], ['AUDITOR', 'ADMIN_TI'])).toBe(true);
   });
 
-  it('PACIENTE no puede acceder a endpoints clínicos', () => {
+  it('PACIENTE no puede acceder a endpoints clÃ­nicos', () => {
     expect(checkRoles(['PACIENTE'], ['MEDICO', 'ENFERMERIA', 'ADMINISTRATIVO'])).toBe(false);
   });
 
-  it('ADMIN_TI puede acceder a administración del sistema', () => {
+  it('ADMIN_TI puede acceder a administraciÃ³n del sistema', () => {
     expect(checkRoles(['ADMIN_TI'], ['ADMIN_TI'])).toBe(true);
   });
 
-  it('Usuario sin roles no pasa ningún guard de rol', () => {
+  it('Usuario sin roles no pasa ningÃºn guard de rol', () => {
     expect(checkRoles([], ['MEDICO', 'ENFERMERIA'])).toBe(false);
   });
 });
 
-// ── Pruebas de ABAC – Relación Asistencial ─────────────────────────────────
+// â”€â”€ Pruebas de ABAC â€“ RelaciÃ³n Asistencial â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-describe('ABAC – Relación Asistencial (lógica del guard)', () => {
+describe('ABAC â€“ RelaciÃ³n Asistencial (lÃ³gica del guard)', () => {
   /**
-   * Simula la lógica del RelacionAsistencialGuard:
-   * - Si el médico tiene relación activa → permite acceso.
-   * - Si no tiene relación pero declara break-glass → permite con auditoría.
-   * - Sin relación y sin break-glass → deniega.
+   * Simula la lÃ³gica del RelacionAsistencialGuard:
+   * - Si el mÃ©dico tiene relaciÃ³n activa â†’ permite acceso.
+   * - Si no tiene relaciÃ³n pero declara break-glass â†’ permite con auditorÃ­a.
+   * - Sin relaciÃ³n y sin break-glass â†’ deniega.
    */
   function evaluateAccess(
     relacionActiva: boolean,
@@ -80,40 +80,40 @@ describe('ABAC – Relación Asistencial (lógica del guard)', () => {
     return { allow: false, breakGlass: false };
   }
 
-  it('Médico CON relación asistencial activa: acceso permitido', () => {
+  it('MÃ©dico CON relaciÃ³n asistencial activa: acceso permitido', () => {
     const result = evaluateAccess(true, undefined);
     expect(result.allow).toBe(true);
     expect(result.breakGlass).toBe(false);
   });
 
-  it('Médico SIN relación y SIN break-glass: acceso denegado', () => {
+  it('MÃ©dico SIN relaciÃ³n y SIN break-glass: acceso denegado', () => {
     const result = evaluateAccess(false, undefined);
     expect(result.allow).toBe(false);
   });
 
-  it('Médico SIN relación pero CON break-glass válido: acceso de emergencia', () => {
+  it('MÃ©dico SIN relaciÃ³n pero CON break-glass vÃ¡lido: acceso de emergencia', () => {
     const result = evaluateAccess(false, 'Paciente inconsciente con sangrado grave');
     expect(result.allow).toBe(true);
     expect(result.breakGlass).toBe(true);
   });
 
-  it('Break-glass con justificación demasiado corta: denegado', () => {
+  it('Break-glass con justificaciÃ³n demasiado corta: denegado', () => {
     const result = evaluateAccess(false, 'urgente'); // < 20 chars
     expect(result.allow).toBe(false);
   });
 
-  it('Break-glass con string vacío: denegado', () => {
+  it('Break-glass con string vacÃ­o: denegado', () => {
     const result = evaluateAccess(false, '');
     expect(result.allow).toBe(false);
   });
 });
 
-// ── Pruebas de nivel de cuenta (BASICO vs COMPLETO) ───────────────────────
+// â”€â”€ Pruebas de nivel de cuenta (BASICO vs COMPLETO) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-describe('ABAC – Nivel de cuenta del paciente', () => {
+describe('ABAC â€“ Nivel de cuenta del paciente', () => {
   /**
    * Los pacientes con cuenta BASICO solo pueden solicitar citas.
-   * Solo con nivel COMPLETO pueden ver su historia clínica.
+   * Solo con nivel COMPLETO pueden ver su historia clÃ­nica.
    */
   function canAccessHistoria(nivelCuenta: 'BASICO' | 'COMPLETO'): boolean {
     return nivelCuenta === 'COMPLETO';
@@ -128,9 +128,9 @@ describe('ABAC – Nivel de cuenta del paciente', () => {
   });
 });
 
-// ── Pruebas de Auditor ─────────────────────────────────────────────────────
+// â”€â”€ Pruebas de Auditor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-describe('RBAC – Permisos del Auditor', () => {
+describe('RBAC â€“ Permisos del Auditor', () => {
   const ROLES_CLINICOS = ['MEDICO', 'ENFERMERIA'];
   const ROLES_AUDITORIA = ['AUDITOR', 'ADMIN_TI'];
 
@@ -138,18 +138,18 @@ describe('RBAC – Permisos del Auditor', () => {
     return requiredRoles.some((r) => userRoles.includes(r));
   }
 
-  it('AUDITOR puede leer logs de auditoría', () => {
+  it('AUDITOR puede leer logs de auditorÃ­a', () => {
     expect(checkRoles(['AUDITOR'], ROLES_AUDITORIA)).toBe(true);
   });
 
-  it('AUDITOR NO puede acceder a endpoints clínicos', () => {
+  it('AUDITOR NO puede acceder a endpoints clÃ­nicos', () => {
     expect(checkRoles(['AUDITOR'], ROLES_CLINICOS)).toBe(false);
   });
 
-  it('AUDITOR NO puede escribir en auditoría (solo lectura)', () => {
-    // La tabla de auditoría es append-only desde la capa de aplicación
-    // Este test documenta la intención del diseño
-    const puedeEscribir = false; // Siempre falso por diseño
+  it('AUDITOR NO puede escribir en auditorÃ­a (solo lectura)', () => {
+    // La tabla de auditorÃ­a es append-only desde la capa de aplicaciÃ³n
+    // Este test documenta la intenciÃ³n del diseÃ±o
+    const puedeEscribir = false; // Siempre falso por diseÃ±o
     expect(puedeEscribir).toBe(false);
   });
 });

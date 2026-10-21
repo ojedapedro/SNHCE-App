@@ -89,7 +89,7 @@ export default function ResumenClinicoPage() {
                 <span>•</span>
                 <span>{data.paciente.sexo}</span>
                 <span>•</span>
-                <Badge variant={data.paciente.estadoIdentidad === 'VERIFICADO' ? 'success' : 'warning'} size="sm">
+                <Badge variant={data.paciente.estadoIdentidad === 'VERIFICADO' ? 'success' : 'warning'}>
                   {data.paciente.estadoIdentidad === 'VERIFICADO' ? 'Identidad Validada' : 'No Validada'}
                 </Badge>
               </div>
@@ -168,7 +168,7 @@ export default function ResumenClinicoPage() {
                         <p className="font-medium text-gray-800">{d.descripcion}</p>
                         <p className="text-xs text-gray-500 mt-1">Registrado el: {d.fecha}</p>
                       </div>
-                      <Badge variant="default" size="sm">{d.estado}</Badge>
+                      <Badge variant="default">{d.estado}</Badge>
                     </div>
                   ))}
                 </div>

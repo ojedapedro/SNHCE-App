@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Card, Button, Input, Badge, Toast } from '@snhce/ui';
+import { useState } from 'react';
+import { Card, Button, Input, Badge } from '@snhce/ui';
 
 export default function ValidacionPresencialPage() {
   const [cedula, setCedula] = useState('');

@@ -18,7 +18,7 @@ const ESTADO_CONFIG = {
   CONFIRMADA: { label: 'Confirmada', color: 'success' as const },
   EN_ESPERA: { label: 'En espera', color: 'warning' as const },
   ATENDIDA: { label: 'Atendida', color: 'default' as const },
-  INASISTENCIA: { label: 'Inasistencia', color: 'danger' as const },
+  INASISTENCIA: { label: 'Inasistencia', color: 'destructive' as const },
 };
 
 export default function AgendaPage() {

@@ -18,7 +18,7 @@ beforeEach(async () => {
   vi.spyOn(crypto.subtle, 'importKey').mockResolvedValue(mockKey);
   vi.spyOn(crypto.subtle, 'deriveKey').mockResolvedValue(mockKey);
   vi.spyOn(crypto.subtle, 'encrypt').mockResolvedValue(new ArrayBuffer(16));
-  vi.spyOn(crypto.subtle, 'decrypt').mockImplementation(async (_, __, data) => data);
+  vi.spyOn(crypto.subtle, 'decrypt').mockImplementation(async (_, __, data) => data as any);
 
   await initCryptoKey('fake-jwt-token-for-test-12345678901234');
 });

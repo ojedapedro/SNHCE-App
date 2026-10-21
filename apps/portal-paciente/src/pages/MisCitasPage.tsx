@@ -48,8 +48,8 @@ export default function MisCitasPage() {
       case 'CONFIRMADA': return 'success';
       case 'EN_ESPERA': return 'warning';
       case 'ATENDIDA': return 'default';
-      case 'CANCELADA': return 'danger';
-      case 'INASISTENCIA': return 'danger';
+      case 'CANCELADA': return 'destructive';
+      case 'INASISTENCIA': return 'destructive';
       default: return 'default';
     }
   };
