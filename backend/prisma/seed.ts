@@ -419,7 +419,7 @@ async function main() {
         presionSistolica: 120 + idx * 10,
         presionDiastolica: 80 + idx * 5,
         frecuenciaCardiaca: 72 + idx * 3,
-        temperaturacelsius: 36.5 + (idx === 0 ? 1.5 : 0),
+        temperaturaCelsius: 36.5 + (idx === 0 ? 1.5 : 0),
         saturacionO2: 98 - idx,
         motivoConsultaCifrado: simulateEncrypt(ed.motivo),
         evolucionCifrado: simulateEncrypt(`Paciente de prueba en buen estado general. Evaluación clínica realizada. Plan de tratamiento indicado.`),
